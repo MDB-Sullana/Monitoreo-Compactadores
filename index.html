@@ -17,10 +17,12 @@
         }
     </style>
 
-    <!-- EmailJS -->
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <!-- EmailJS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
-        emailjs.init("IGGKWnrPTdwnN39yS");
+        emailjs.init({
+            publicKey: "IGGKWnrPTdwnN39yS",
+        });
     </script>
 </head>
 
@@ -52,7 +54,7 @@
     <main class="flex-grow p-4 md:p-6">
         <div class="max-w-full mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
 
-            <!-- MONITOREO -->
+            <!-- MAPA / MONITOREO -->
             <iframe id="content-frame"
                 src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
                 class="w-full h-[80vh]"
@@ -212,12 +214,10 @@
 
             addMessage("Enviando reporte...", "bot");
 
-            // Construir mensaje completo
             const mensajeCompleto = 
                 "Dirección: " + direccion + "\n" +
                 "Incidencia: " + incidencia;
 
-            // Enviar a EmailJS
             emailjs.send("service_6n1vp4m", "template_7yj72fo", {
                 name: name,
                 time: new Date().toLocaleString(),
@@ -227,7 +227,7 @@
                 addMessage("✔️ Reporte enviado correctamente.", "bot");
             })
             .catch((error) => {
-                console.error("Error EmailJS:", error);
+                console.error("EmailJS error:", error);
                 addMessage("❌ Hubo un error al enviar el reporte.", "bot");
             });
         }
