@@ -197,22 +197,45 @@
             sendReport();
         }
     }
+function sendReport() {
+    botSay("⏳ Enviando reporte, por favor espera...");
 
-    function sendReport() {
-        botSay("⏳ Enviando reporte, por favor espera...");
+    const msg =
+        "Dirección: " + data.direccion + "\n" +
+        "Incidencia: " + data.incidencia;
 
-        const msg =
-            "Dirección: " + data.direccion + "\n" +
-            "Incidencia: " + data.incidencia;
+    // 1. Enviar correo por EmailJS
+    emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+        name: data.name,
+        time: new Date().toLocaleString(),
+        message: msg
+    })
+    .then(() => {
+        botSay("✔️ ¡Tu reporte fue enviado por correo!");
+    })
+    .catch(() => {
+        botSay("❌ Hubo un problema al enviar el correo.");
+    });
 
-        emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-            name: data.name,
-            time: new Date().toLocaleString(),
-            message: msg
+    // 2. Guardar en Google Sheets
+    fetch("https://script.google.com/macros/s/AKfycbyafelwwq1zpIBFPLBH_DVqujojU5bLP6nwAMTepkFpchLySiKLTkEtqKz3C3wmROYi/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            nombre: data.name,
+            direccion: data.direccion,
+            incidencia: data.incidencia
         })
-        .then(() => botSay("✔️ ¡Tu reporte fue enviado con éxito! Gracias por tu colaboración."))
-        .catch(() => botSay("❌ Hubo un problema al enviar el reporte."));
-    }
+    })
+    .then(res => res.json())
+    .then(() => {
+        botSay("🗂️ El reporte fue archivado en la base de datos municipal.");
+    })
+    .catch(() => {
+        botSay("⚠️ El reporte se envió, pero no se pudo guardar en la base de datos.");
+    });
+}
+    
 </script>
 
 </body>
