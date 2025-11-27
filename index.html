@@ -204,7 +204,7 @@ function sendReport() {
         "Dirección: " + data.direccion + "\n" +
         "Incidencia: " + data.incidencia;
 
-    // 1. Enviar correo por EmailJS
+    // 1. Enviar correo EmailJS
     emailjs.send("service_6n1vp4m", "template_7yj72fo", {
         name: data.name,
         time: new Date().toLocaleString(),
@@ -218,7 +218,7 @@ function sendReport() {
     });
 
     // 2. Guardar en Google Sheets
-    fetch("https://script.google.com/macros/s/AKfycbyafelwwq1zpIBFPLBH_DVqujojU5bLP6nwAMTepkFpchLySiKLTkEtqKz3C3wmROYi/exec", {
+    fetch("https://script.google.com/macros/s/AKfycbxma05KqBOdQkdCbfa7v4vVOGoVWftHmBF9vKp9pIxfvD1N-zP7RJA840O1binWqbYX/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -232,10 +232,10 @@ function sendReport() {
         botSay("🗂️ El reporte fue archivado en la base de datos municipal.");
     })
     .catch(() => {
-        botSay("⚠️ El reporte se envió, pero no se pudo guardar en la base de datos.");
+        botSay("⚠️ El reporte fue enviado, pero no se pudo guardar en la base de datos.");
     });
 }
-    
+   
 </script>
 
 </body>
