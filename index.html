@@ -1,240 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monitoreo Ciudadano - Bellavista</title>
-
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- EmailJS -->
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
-        #content-frame { height: calc(100vh - 120px); }
-    </style>
-</head>
-
-<body class="min-h-screen flex flex-col">
-
-    <!-- HEADER -->
-    <header class="bg-blue-900 shadow-lg p-4 sticky top-0 z-10">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <img src="./logo-bellavista.jpeg" class="h-12 w-12 rounded-full shadow-md" alt="Logo">
-                <h1 class="text-xl md:text-2xl font-bold text-white">
-                    MONITOREO CIUDADANO DE CAMIONES COMPACTADORES
-                </h1>
-            </div>
-
-            <span class="hidden sm:block bg-yellow-400 text-gray-900 text-sm font-semibold px-3 py-1 rounded-full shadow-inner">
-                <span class="animate-pulse inline-block w-2 h-2 mr-1 bg-green-500 rounded-full"></span>
-                En Línea
-            </span>
-        </div>
-    </header>
-
-    <!-- CONTENIDO -->
-    <main class="flex-grow p-4 md:p-6">
-        <div class="max-w-full mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-            <iframe id="content-frame"
-                    src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
-                    class="w-full"
-                    frameborder="0"
-                    allowfullscreen>
-            </iframe>
-        </div>
-    </main>
-
-    <footer class="bg-gray-100 border-t text-center p-3 text-sm text-gray-600">
-        © 2024 Monitoreo Ciudadano - Municipalidad Distrital de Bellavista.
-    </footer>
-
-    <!-- CHATBOT -->
+<meta charset="UTF-8">
+<title>Chatbot Bellavista</title>
 <style>
-  #chatbot-button {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
-    background: #1e3a8a;
-    color: white;
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    cursor: pointer;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-    z-index: 9999;
+  body {
+    font-family: Arial, sans-serif;
   }
-
-  #chatbot-window {
-    width: 330px;
-    height: 430px;
-    background: #ffffff;
-    position: fixed;
-    bottom: 100px;
-    right: 25px;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.25);
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-    z-index: 9999;
-  }
-
-  #chatbot-header {
-    background: #1e3a8a;
-    color: white;
-    padding: 12px;
-    font-weight: bold;
-    text-align: center;
-  }
-
-  #chatbot-messages {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-  }
-
-  .msg {
-    margin-bottom: 12px;
-    padding: 9px 13px;
-    max-width: 80%;
-    border-radius: 12px;
-    font-size: 14px;
-  }
-
-  .bot {
-    background: #e5e7eb;
-    color: #111827;
-  }
-
-  .user {
-    background: #1e3a8a;
-    color: white;
-    margin-left: auto;
-  }
-
-  #chatbot-input-area {
-    display: flex;
-    padding: 8px;
-    background: #f3f4f6;
-  }
-
-  #chatbot-input {
-    flex: 1;
-    padding: 8px;
-    border-radius: 8px;
+  #chatbox {
+    width: 350px;
+    height: 450px;
     border: 1px solid #ccc;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
-
-  #send-btn {
-    margin-left: 8px;
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    padding: 8px;
+    background: #fafafa;
+  }
+  #inputArea {
+    display: flex;
+    gap: 6px;
+  }
+  input {
+    flex: 1;
+    padding: 8px;
+  }
+  button {
+    padding: 8px 12px;
     background: #1e3a8a;
     color: white;
-    padding: 8px 12px;
-    border-radius: 8px;
+    border: none;
     cursor: pointer;
   }
 </style>
 
-<div id="chatbot-button">💬</div>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+<script>
+(function() {
+  emailjs.init("_Iq2cEVId5yGaT-WvZMxE");
+})();
+</script>
 
-<div id="chatbot-window">
-  <div id="chatbot-header">Asistente Virtual Bellavista</div>
-  <div id="chatbot-messages"></div>
-  <div id="chatbot-input-area">
-    <input id="chatbot-input" type="text" placeholder="Escribe un mensaje...">
-    <div id="send-btn">Enviar</div>
+</head>
+<body>
+
+<div id="chatbox">
+  <h3>Chat Municipalidad Bellavista</h3>
+  <div id="messages"></div>
+
+  <div id="inputArea">
+    <input id="userInput" type="text" placeholder="Escribe aquí...">
+    <button onclick="sendMessage()">Enviar</button>
   </div>
 </div>
 
-<!-- SCRIPT DEL CHATBOT -->
 <script>
-emailjs.init("_Iq2cEVId5yGaT-WvZMxE"); // public key
+  const messages = document.getElementById("messages");
 
-let estado = "inicio";
-let reporte = {
-  direccion: "",
-  nombre: "",
-  descripcion: ""
-};
-
-document.getElementById("chatbot-button").onclick = () => {
-  const win = document.getElementById("chatbot-window");
-  win.style.display = win.style.display === "flex" ? "none" : "flex";
-
-  if (estado === "inicio") {
-    addMessage("Estimado vecino, contribuye a mantener una ciudad limpia.", "bot");
-    addMessage("📍 Por favor ingresa la dirección donde no se recogieron los residuos.", "bot");
-    estado = "direccion";
-  }
-};
-
-document.getElementById("send-btn").onclick = enviarMensaje;
-document.getElementById("chatbot-input").addEventListener("keypress", e => { if (e.key === "Enter") enviarMensaje(); });
-
-function addMessage(text, type) {
-  const chat = document.getElementById("chatbot-messages");
-  const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.innerText = text;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function enviarMensaje() {
-  const input = document.getElementById("chatbot-input");
-  const msg = input.value.trim();
-  if (!msg) return;
-
-  addMessage(msg, "user");
-  input.value = "";
-
-  procesarFlujo(msg);
-}
-
-function procesarFlujo(msg) {
-  if (estado === "direccion") {
-    reporte.direccion = msg;
-    addMessage("👤 Por favor ingresa tu nombre (opcional).", "bot");
-    estado = "nombre";
-    return;
+  function addMessage(text, sender = "bot") {
+    const p = document.createElement("p");
+    p.innerHTML = `<strong>${sender === "bot" ? "🤖" : "🧑‍💼"}:</strong> ${text}`;
+    messages.appendChild(p);
+    messages.scrollTop = messages.scrollHeight;
   }
 
-  if (estado === "nombre") {
-    reporte.nombre = msg;
-    addMessage("📝 Describe brevemente el problema.", "bot");
-    estado = "descripcion";
-    return;
+  // MENSAJE INICIAL
+  addMessage("Estimado vecino, contribuye a mantener una ciudad limpia.<br>Por favor indícame tu dirección y la incidencia (residuos no recogidos).");
+
+  function sendMessage() {
+    const input = document.getElementById("userInput");
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    addMessage(text, "user");
+    input.value = "";
+
+    procesarMensaje(text);
   }
 
-  if (estado === "descripcion") {
-    reporte.descripcion = msg;
+  function procesarMensaje(text) {
+    addMessage("Gracias, estoy registrando tu reporte...");
 
-    addMessage("⏳ Enviando reporte, por favor espere...", "bot");
-
-    emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-      direccion: reporte.direccion,
-      nombre: reporte.nombre,
-      descripcion: reporte.descripcion
-    })
-    .then(() => {
-      addMessage("✅ Reporte enviado con éxito. ¡Gracias por apoyar una ciudad más limpia!", "bot");
-    })
-    .catch(() => {
-      addMessage("❌ Hubo un error al enviar el reporte. Intente nuevamente.", "bot");
-    });
-
-    estado = "inicio";
-    reporte = { direccion: "", nombre: "", descripcion: "" };
+    enviarCorreo(text)
+      .then(() => {
+        addMessage("Tu reporte fue enviado correctamente ✔️");
+      })
+      .catch((err) => {
+        addMessage("Hubo un error al enviar el reporte ❌");
+        console.error(err);
+      });
   }
-}
+
+  function enviarCorreo(mensaje) {
+    return emailjs.send(
+      "service_6n1vp4m",
+      "template_7yj72fo",
+      {
+        mensaje: mensaje,
+        correo: "kmauriciomaldonado@mdbellavista.gob.pe"
+      }
+    );
+  }
 </script>
 
 </body>
