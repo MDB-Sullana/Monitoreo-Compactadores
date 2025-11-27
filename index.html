@@ -96,6 +96,28 @@
             border-radius: 8px;
             cursor: pointer;
         }
+
+        /* ANIMACIONES PRO */
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            0% { opacity: 0; transform: translateY(25px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.06); filter: brightness(1.15); }
+        }
+
+        @keyframes slide {
+            0% { transform: translateX(-30px); opacity: 0.3; }
+            50% { transform: translateX(30px); opacity: 1; }
+            100% { transform: translateX(-30px); opacity: 0.3; }
+        }
     </style>
 </head>
 
@@ -118,21 +140,51 @@
         </iframe>
     </div>
 
-    <!-- SECCIÓN COCHERA (de 13:00 a 4:59) -->
+    <!-- SECCIÓN COCHERA PRO (de 13:00 a 4:59) -->
     <div id="cochera-section" class="hidden flex items-center justify-center h-[80vh]">
-        <div class="bg-blue-900 text-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-3xl text-center">
-            <h2 class="text-2xl md:text-3xl font-extrabold mb-4">
-                EL SERVICIO DE RECOLECCIÓN DE RESIDUOS SÓLIDOS HA CONCLUIDO POR HOY
-            </h2>
-            <p class="text-lg md:text-xl mb-4">
-                NOS REENCONTRAMOS EL DÍA DE MAÑANA PARA SEGUIR TRABAJANDO POR UN BELLAVISTA LIMPIO.
-            </p>
-            <p class="text-base md:text-lg font-semibold">
-                GRACIAS POR CUIDAR DE TU CIUDAD.
-            </p>
-            <p class="mt-6 text-xs md:text-sm text-blue-100">
-                Horario de operación del monitoreo: de 5:00 a 13:00 horas.
-            </p>
+        
+        <div class="relative w-full flex items-center justify-center p-6">
+
+            <!-- Fondo PRO -->
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 opacity-95 rounded-3xl shadow-2xl"></div>
+
+            <!-- TARJETA PRO -->
+            <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl 
+                        p-8 md:p-12 max-w-5xl w-full flex flex-col md:flex-row items-center gap-10
+                        animate-[fadeIn_1s_ease-out]">
+
+                <!-- LOGO -->
+                <div class="flex flex-col items-center">
+                    <img 
+                        src="./logo-bellavista.jpeg" 
+                        onerror="this.src='https://placehold.co/200x200/1e3a8a/ffffff?text=LOGO';"
+                        class="w-40 h-40 md:w-48 md:h-48 rounded-full shadow-xl object-cover animate-[pulse_3s_infinite] ring-4 ring-white/40"
+                    >
+
+                    <div class="mt-3 w-24 h-1 bg-gradient-to-r from-blue-300 to-white rounded-full animate-[slide_2s_infinite]"></div>
+                </div>
+
+                <!-- TEXTO -->
+                <div class="text-center md:text-left animate-[slideUp_1s_ease-out]">
+
+                    <h2 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight text-white drop-shadow-lg">
+                        EL SERVICIO DE RECOLECCIÓN HA CONCLUIDO POR HOY
+                        <span class="block text-blue-200">NUESTROS CAMIONES ESTÁN EN COCHERA</span>
+                    </h2>
+
+                    <p class="text-lg md:text-xl mb-3 text-blue-100 font-medium">
+                        NOS REENCONTRAMOS MAÑANA PARA SEGUIR TRABAJANDO POR UN BELLAVISTA LIMPIO.
+                    </p>
+
+                    <p class="text-base md:text-lg text-blue-200 font-semibold">
+                        GRACIAS POR CUIDAR DE TU CIUDAD.
+                    </p>
+
+                    <p class="mt-6 text-xs md:text-sm text-blue-300 font-light">
+                        Horario del monitoreo: de 5:00 a 13:00 horas.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </main>
@@ -142,26 +194,21 @@
 
 <!-- CHATBOT -->
 <div id="chatbot-window">
-
     <div id="chatbot-messages"></div>
-
     <div id="chat-input-box">
         <input type="text" id="user-input" placeholder="Escribe aquí...">
         <button id="send-btn">Enviar</button>
     </div>
-
 </div>
 
 <script>
-    // ----- LÓGICA HORARIA: MAPA vs MENSAJE DE COCHERA -----
+    // ----- LÓGICA HORARIA -----
     function configurarVista() {
         const now = new Date();
-        const hour = now.getHours(); // 0–23
+        const hour = now.getHours();
         const mapSection = document.getElementById("map-section");
         const cocheraSection = document.getElementById("cochera-section");
 
-        // De 13:00 a 4:59 -> mostrar mensaje de cochera
-        // De 5:00 a 12:59 -> mostrar mapa
         if (hour >= 13 || hour < 5) {
             cocheraSection.classList.remove("hidden");
             mapSection.classList.add("hidden");
@@ -173,7 +220,7 @@
 
     window.addEventListener("load", configurarVista);
 
-    // ----- LÓGICA DEL CHATBOT -----
+    // ----- CHATBOT -----
     const botBtn = document.getElementById("chatbot-button");
     const botWindow = document.getElementById("chatbot-window");
     const messages = document.getElementById("chatbot-messages");
@@ -202,7 +249,6 @@
     botBtn.onclick = () => {
         botWindow.style.display =
             botWindow.style.display === "flex" ? "none" : "flex";
-
         if (messages.innerHTML.trim() === "") startChat();
     };
 
@@ -247,7 +293,6 @@
             "Dirección: " + data.direccion + "\n" +
             "Incidencia: " + data.incidencia;
 
-        // 1. Enviar correo con EmailJS
         emailjs.send("service_6n1vp4m", "template_7yj72fo", {
             name: data.name,
             time: new Date().toLocaleString(),
@@ -259,8 +304,6 @@
         .catch(() => {
             botSay("❌ Hubo un problema al enviar el correo.");
         });
-
-        // (Si luego quieres, aquí volvemos a conectar Google Sheets)
     }
 </script>
 
