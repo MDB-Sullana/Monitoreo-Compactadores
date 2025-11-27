@@ -8,15 +8,6 @@
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Fuente -->
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: #f3f4f6; 
-        }
-    </style>
-
     <!-- EmailJS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
@@ -24,54 +15,10 @@
             publicKey: "IGGKWnrPTdwnN39yS",
         });
     </script>
-</head>
 
-<body class="min-h-screen flex flex-col">
-
-    <!-- HEADER -->
-    <header class="bg-blue-900 shadow-lg p-4 sticky top-0 z-10">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <img 
-                    src="./logo-bellavista.jpeg" 
-                    alt="Logo Bellavista"
-                    class="h-12 w-12 rounded-full object-cover shadow-md"
-                    onerror="this.src='https://placehold.co/60x60/1e3a8a/ffffff?text=LOGO'"
-                >
-                <h1 class="text-xl md:text-2xl font-bold text-white">
-                    MONITOREO CIUDADANO DE CAMIONES COMPACTADORES
-                </h1>
-            </div>
-
-            <span class="hidden sm:block bg-yellow-400 text-gray-900 text-sm font-semibold px-3 py-1 rounded-full shadow-inner">
-                <span class="animate-pulse inline-block w-2 h-2 mr-1 bg-green-500 rounded-full"></span>
-                En Línea
-            </span>
-        </div>
-    </header>
-
-    <!-- CONTENIDO -->
-    <main class="flex-grow p-4 md:p-6">
-        <div class="max-w-full mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-
-            <!-- MAPA / MONITOREO -->
-            <iframe id="content-frame"
-                src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
-                class="w-full h-[80vh]"
-                frameborder="0"
-                allowfullscreen>
-            </iframe>
-
-        </div>
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="bg-gray-100 border-t border-gray-200 p-3 text-center text-sm text-gray-600">
-        © 2024 Monitoreo Ciudadano - Municipalidad Distrital de Bellavista.
-    </footer>
-
-    <!-- CHATBOT FLOTANTE -->
     <style>
+        body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
+
         #chatbot-button {
             position: fixed;
             bottom: 25px;
@@ -92,8 +39,8 @@
 
         #chatbot-window {
             width: 330px;
-            height: 470px;
-            background: #ffffff;
+            height: 480px;
+            background: white;
             position: fixed;
             bottom: 100px;
             right: 25px;
@@ -105,14 +52,6 @@
             z-index: 9999;
         }
 
-        #chatbot-header {
-            background: #1e3a8a;
-            color: white;
-            padding: 12px;
-            font-weight: bold;
-            text-align: center;
-        }
-
         #chatbot-messages {
             flex: 1;
             padding: 10px;
@@ -122,116 +61,156 @@
 
         .msg {
             margin-bottom: 12px;
-            padding: 10px 12px;
-            max-width: 90%;
+            padding: 10px 14px;
+            max-width: 80%;
             border-radius: 12px;
             font-size: 14px;
+            line-height: 1.3;
         }
 
         .bot { background: #e5e7eb; color: #111827; }
         .user { background: #1e3a8a; color: white; margin-left: auto; }
 
-        #chat-form {
-            padding: 10px;
-            background: #ffffff;
-            border-top: 1px solid #ddd;
-        }
-
-        #chat-form input,
-        #chat-form textarea {
-            width: 100%;
+        #chat-input-box {
+            display: flex;
             padding: 8px;
-            margin-top: 6px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
+            border-top: 1px solid #ddd;
+            background: white;
         }
 
-        #chat-form button {
-            margin-top: 10px;
-            width: 100%;
+        #user-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        #send-btn {
+            margin-left: 6px;
             background: #1e3a8a;
             color: white;
-            padding: 10px;
+            padding: 8px 14px;
             border-radius: 8px;
             cursor: pointer;
         }
     </style>
+</head>
 
-    <!-- BOTÓN -->
-    <div id="chatbot-button">💬</div>
+<body>
 
-    <!-- VENTANA DEL CHAT -->
-    <div id="chatbot-window">
-        <div id="chatbot-header">Asistente Virtual Bellavista</div>
+<!-- HEADER -->
+<header class="bg-blue-900 p-4 text-white font-bold text-center shadow">
+    MONITOREO CIUDADANO DE CAMIONES COMPACTADORES
+</header>
 
-        <div id="chatbot-messages"></div>
+<!-- MAPA -->
+<main class="p-4">
+    <iframe 
+        src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
+        class="w-full h-[80vh] rounded-xl shadow-xl"
+        frameborder="0"
+        allowfullscreen>
+    </iframe>
+</main>
 
-        <!-- FORMULARIO -->
-        <div id="chat-form">
-            <label>Nombre:</label>
-            <input type="text" id="chat-nombre">
+<!-- BOTÓN FLOTANTE -->
+<div id="chatbot-button">💬</div>
 
-            <label>Dirección:</label>
-            <input type="text" id="chat-direccion">
+<!-- CHATBOT -->
+<div id="chatbot-window">
+    <div id="chatbot-messages"></div>
 
-            <label>Detalle del problema:</label>
-            <textarea id="chat-incidencia" rows="3"></textarea>
-
-            <button onclick="enviarReporte()">Enviar reporte</button>
-        </div>
+    <div id="chat-input-box">
+        <input type="text" id="user-input" placeholder="Escribe aquí...">
+        <button id="send-btn">Enviar</button>
     </div>
+</div>
 
-    <!-- SCRIPT DEL CHAT -->
-    <script>
-        const chatButton = document.getElementById("chatbot-button");
-        const chatWindow = document.getElementById("chatbot-window");
-        const messages = document.getElementById("chatbot-messages");
+<script>
+    const botBtn = document.getElementById("chatbot-button");
+    const botWindow = document.getElementById("chatbot-window");
+    const messages = document.getElementById("chatbot-messages");
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
 
-        chatButton.onclick = () => {
-            chatWindow.style.display = chatWindow.style.display === "flex" ? "none" : "flex";
-        };
+    let step = 0;
+    let data = { name: "", direccion: "", incidencia: "" };
 
-        function addMessage(text, type = "bot") {
-            const div = document.createElement("div");
-            div.className = "msg " + type;
-            div.innerHTML = text;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
+    const botSay = (text) => {
+        const div = document.createElement("div");
+        div.className = "msg bot";
+        div.innerHTML = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    const userSay = (text) => {
+        const div = document.createElement("div");
+        div.className = "msg user";
+        div.innerHTML = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    botBtn.onclick = () => {
+        botWindow.style.display = botWindow.style.display === "flex" ? "none" : "flex";
+        if (messages.innerHTML.trim() === "") startChat();
+    };
+
+    function startChat() {
+        step = 0;
+        botSay("👋 Hola vecino, gracias por ayudar a mantener limpia la ciudad.");
+        setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
+    }
+
+    sendBtn.onclick = () => handleUserMessage();
+    input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleUserMessage();
+    });
+
+    function handleUserMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        userSay(text);
+        input.value = "";
+
+        if (step === 0) {
+            data.name = text;
+            step = 1;
+            setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
+        } 
+        else if (step === 1) {
+            data.direccion = text;
+            step = 2;
+            setTimeout(() => botSay("Por favor describe la incidencia."), 500);
+        } 
+        else if (step === 2) {
+            data.incidencia = text;
+            step = 3;
+            sendReport();
         }
+    }
 
-        // Mensaje inicial
-        addMessage("Estimado vecino, contribuye a mantener una ciudad limpia.<br>Complete los datos y envíe su reporte.");
+    function sendReport() {
+        botSay("⏳ Enviando tu reporte, por favor espera...");
 
-        function enviarReporte() {
-            const name = document.getElementById("chat-nombre").value.trim();
-            const direccion = document.getElementById("chat-direccion").value.trim();
-            const incidencia = document.getElementById("chat-incidencia").value.trim();
+        const fullMessage =
+            "Dirección: " + data.direccion + "\n" +
+            "Incidencia: " + data.incidencia;
 
-            if (!name || !direccion || !incidencia) {
-                addMessage("⚠️ Por favor complete todos los campos.", "bot");
-                return;
-            }
-
-            addMessage("Enviando reporte...", "bot");
-
-            const mensajeCompleto = 
-                "Dirección: " + direccion + "\n" +
-                "Incidencia: " + incidencia;
-
-            emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-                name: name,
-                time: new Date().toLocaleString(),
-                message: mensajeCompleto
-            })
-            .then(() => {
-                addMessage("✔️ Reporte enviado correctamente.", "bot");
-            })
-            .catch((error) => {
-                console.error("EmailJS error:", error);
-                addMessage("❌ Hubo un error al enviar el reporte.", "bot");
-            });
-        }
-    </script>
+        emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+            name: data.name,
+            time: new Date().toLocaleString(),
+            message: fullMessage
+        })
+        .then(() => {
+            botSay("✔️ ¡Reporte enviado correctamente! Gracias por tu apoyo.");
+        })
+        .catch(() => {
+            botSay("❌ Hubo un error al enviar el reporte.");
+        });
+    }
+</script>
 
 </body>
 </html>
