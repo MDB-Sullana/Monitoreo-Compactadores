@@ -8,9 +8,10 @@
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Fuente -->
+    <!-- EmailJS -->
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
         #content-frame { height: calc(100vh - 120px); }
     </style>
@@ -22,12 +23,7 @@
     <header class="bg-blue-900 shadow-lg p-4 sticky top-0 z-10">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-4">
-                <img 
-  src="./logo-bellavista.jpeg" 
-  alt="Logo Bellavista"
-  class="h-12 w-12 rounded-full object-cover shadow-md"
-  onerror="this.src='https://placehold.co/60x60/1e3a8a/ffffff?text=LOGO'"
->
+                <img src="./logo-bellavista.jpeg" class="h-12 w-12 rounded-full shadow-md" alt="Logo">
                 <h1 class="text-xl md:text-2xl font-bold text-white">
                     MONITOREO CIUDADANO DE CAMIONES COMPACTADORES
                 </h1>
@@ -52,16 +48,12 @@
         </div>
     </main>
 
-    <!-- FOOTER -->
-    <footer class="bg-gray-100 border-t border-gray-200 p-3 text-center text-sm text-gray-600">
+    <footer class="bg-gray-100 border-t text-center p-3 text-sm text-gray-600">
         © 2024 Monitoreo Ciudadano - Municipalidad Distrital de Bellavista.
     </footer>
 
     <!-- CHATBOT -->
-    <div id="chatbot-container"
-         class="fixed bottom-4 right-4 z-50 flex flex-col items-end">
-    <!-- BOTÓN FLOTANTE DEL CHATBOT -->
-    <style>
+<style>
   #chatbot-button {
     position: fixed;
     bottom: 25px;
@@ -111,7 +103,7 @@
 
   .msg {
     margin-bottom: 12px;
-    padding: 8px 12px;
+    padding: 9px 13px;
     max-width: 80%;
     border-radius: 12px;
     font-size: 14px;
@@ -162,16 +154,41 @@
   </div>
 </div>
 
-        <!-- SCRIPT CHATBOT -->
-    <script>
-const apiKey = "TU_API_KEY_AQUI";
+<!-- SCRIPT DEL CHATBOT -->
+<script>
+emailjs.init("_Iq2cEVId5yGaT-WvZMxE"); // public key
 
-document.getElementById("chatbot-button").onclick = function () {
-  const win = document.getElementById("chatbot-window");
-  win.style.display = win.style.display === "flex" ? "none" : "flex";
+let estado = "inicio";
+let reporte = {
+  direccion: "",
+  nombre: "",
+  descripcion: ""
 };
 
-async function sendMessage() {
+document.getElementById("chatbot-button").onclick = () => {
+  const win = document.getElementById("chatbot-window");
+  win.style.display = win.style.display === "flex" ? "none" : "flex";
+
+  if (estado === "inicio") {
+    addMessage("Estimado vecino, contribuye a mantener una ciudad limpia.", "bot");
+    addMessage("📍 Por favor ingresa la dirección donde no se recogieron los residuos.", "bot");
+    estado = "direccion";
+  }
+};
+
+document.getElementById("send-btn").onclick = enviarMensaje;
+document.getElementById("chatbot-input").addEventListener("keypress", e => { if (e.key === "Enter") enviarMensaje(); });
+
+function addMessage(text, type) {
+  const chat = document.getElementById("chatbot-messages");
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.innerText = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function enviarMensaje() {
   const input = document.getElementById("chatbot-input");
   const msg = input.value.trim();
   if (!msg) return;
@@ -179,51 +196,46 @@ async function sendMessage() {
   addMessage(msg, "user");
   input.value = "";
 
-  addMessage("Escribiendo...", "bot", true);
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey
-    },
-    body: JSON.stringify({
-      model: "gpt-4.1-mini",  
-      input: msg
-    })
-  });
-
-  const data = await response.json();
-  removeTyping();
-  addMessage(data.output_text, "bot");
+  procesarFlujo(msg);
 }
 
-function addMessage(text, type, typing = false) {
-  const messages = document.getElementById("chatbot-messages");
-  const messageDiv = document.createElement("div");
-  messageDiv.className = "msg " + type;
-
-  if (typing) {
-    messageDiv.id = "typing-msg";
+function procesarFlujo(msg) {
+  if (estado === "direccion") {
+    reporte.direccion = msg;
+    addMessage("👤 Por favor ingresa tu nombre (opcional).", "bot");
+    estado = "nombre";
+    return;
   }
 
-  messageDiv.innerText = text;
-  messages.appendChild(messageDiv);
-  messages.scrollTop = messages.scrollHeight;
+  if (estado === "nombre") {
+    reporte.nombre = msg;
+    addMessage("📝 Describe brevemente el problema.", "bot");
+    estado = "descripcion";
+    return;
+  }
+
+  if (estado === "descripcion") {
+    reporte.descripcion = msg;
+
+    addMessage("⏳ Enviando reporte, por favor espere...", "bot");
+
+    emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+      direccion: reporte.direccion,
+      nombre: reporte.nombre,
+      descripcion: reporte.descripcion
+    })
+    .then(() => {
+      addMessage("✅ Reporte enviado con éxito. ¡Gracias por apoyar una ciudad más limpia!", "bot");
+    })
+    .catch(() => {
+      addMessage("❌ Hubo un error al enviar el reporte. Intente nuevamente.", "bot");
+    });
+
+    estado = "inicio";
+    reporte = { direccion: "", nombre: "", descripcion: "" };
+  }
 }
-
-function removeTyping() {
-  const typingMsg = document.getElementById("typing-msg");
-  if (typingMsg) typingMsg.remove();
-}
-
-document.getElementById("send-btn").onclick = sendMessage;
-
-document.getElementById("chatbot-input").addEventListener("keypress", e => {
-  if (e.key === "Enter") sendMessage();
-});
 </script>
-
 
 </body>
 </html>
