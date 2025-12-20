@@ -103,7 +103,6 @@
     .truck-wrap{
       position: relative;
       transform: translate(-50%, -100%);
-      pointer-events: none;
     }
     .truck-img{
       width: 44px;
@@ -112,6 +111,12 @@
       filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
     }
   </style>
+
+  <!-- Google Maps JS API (con callback) -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&v=weekly&callback=initMap"
+    defer
+  ></script>
 </head>
 
 <body>
@@ -149,7 +154,7 @@
     <div class="badge">🟡 Ruta en vivo + Camiones siempre visibles</div>
     <div class="btn" id="btn-live">En vivo (Auto)</div>
     <div class="btn secondary" id="btn-center">Centrar</div>
-    <div class="badge" id="status-text">Estado: cargando mapa…</div>
+    <div class="badge" id="status-text">Estado: iniciando…</div>
   </div>
 
   <!-- MAPA -->
@@ -174,7 +179,6 @@
    CONFIG
 ========================= */
 const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
-const DEVICE_IDS = [305, 809]; // COMPACTADOR y COMPACTADOR 2
 const POLL_MS = 8000; // cada 8s
 
 // Iconos (deben existir en tu repo)
@@ -203,6 +207,7 @@ function dentroDeHorarioRuta() {
 ========================= */
 let map;
 let liveTimer = null;
+
 const polylines = new Map();   // id -> google.maps.Polyline
 
 // Custom marker label (HTML) usando OverlayView
@@ -271,12 +276,8 @@ class HtmlMarker extends google.maps.OverlayView {
 
 const htmlMarkers = new Map(); // id -> HtmlMarker
 
-function setStatus(text) {
-  const el = document.getElementById("status-text");
-  if (el) el.textContent = "Estado: " + text;
-}
-
-function initMap() {
+// OJO: Google Maps llama a initMap por el callback
+window.initMap = function initMap() {
   // Centro Bellavista aprox
   const center = { lat: -4.8848, lng: -80.6781 };
 
@@ -290,7 +291,7 @@ function initMap() {
     gestureHandling: "greedy"
   });
 
-  setStatus("mapa listo ✅");
+  document.getElementById("status-text").textContent = "Estado: mapa listo ✅";
 
   // Auto arrancar “En vivo”
   startLive();
@@ -306,19 +307,16 @@ function initMap() {
   });
 }
 
-// Hacer accesible para callback de Google Maps
-window.initMap = initMap;
-
 function stopLive() {
   clearInterval(liveTimer);
   liveTimer = null;
   document.getElementById("btn-live").textContent = "En vivo (OFF)";
-  setStatus("en vivo detenido ⏸️");
+  document.getElementById("status-text").textContent = "Estado: en vivo detenido ⏸️";
 }
 
 function startLive() {
   document.getElementById("btn-live").textContent = "En vivo (ON)";
-  setStatus("cargando camiones…");
+  document.getElementById("status-text").textContent = "Estado: cargando camiones…";
   tick(); // una vez al inicio
   liveTimer = setInterval(tick, POLL_MS);
 }
@@ -326,8 +324,8 @@ function startLive() {
 /* =========================
    FETCH + DIBUJO
 ========================= */
-async function fetchDevice(id) {
-  const url = WORKER_URL + "?device_id=" + encodeURIComponent(id) + "&_=" + Date.now();
+async function fetchAll() {
+  const url = WORKER_URL + "?_=" + Date.now();
   const r = await fetch(url, { cache: "no-store" });
   return await r.json();
 }
@@ -348,40 +346,26 @@ function ensurePolyline(id) {
 }
 
 function toNum(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function normalizeTail(tail) {
-  if (!Array.isArray(tail)) return [];
-
-  // Caso A: [{lat:"..", lng:".."}, ...]
-  if (tail.length && typeof tail[0] === "object" && tail[0] !== null && "lat" in tail[0] && "lng" in tail[0]) {
-    return tail
-      .map(p => ({ lat: toNum(p.lat), lng: toNum(p.lng) }))
-      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-  }
-
-  // Caso B: [[lat, lng], ...] (por si algún día cambia)
-  if (tail.length && Array.isArray(tail[0]) && tail[0].length >= 2) {
-    return tail
-      .map(a => ({ lat: toNum(a[0]), lng: toNum(a[1]) }))
-      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-  }
-
-  return [];
+  const n = typeof x === "number" ? x : parseFloat(String(x));
+  return Number.isFinite(n) ? n : null;
 }
 
 function updateTruck(id, item) {
   const lat = toNum(item.lat);
   const lng = toNum(item.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (lat === null || lng === null) return false;
 
   const pos = new google.maps.LatLng(lat, lng);
 
   // HTML marker con nombre + icono
   if (!htmlMarkers.has(id)) {
-    const hm = new HtmlMarker(pos, map, id, item.name || ("Camión " + id), ICONS[id] || ICONS[305]);
+    const hm = new HtmlMarker(
+      pos,
+      map,
+      id,
+      item.name || ("Camión " + id),
+      ICONS[id] || ICONS[305]
+    );
     htmlMarkers.set(id, hm);
   } else {
     const hm = htmlMarkers.get(id);
@@ -393,14 +377,17 @@ function updateTruck(id, item) {
   const habilitarLinea = dentroDeHorarioRuta();
   const pl = ensurePolyline(id);
 
-  if (habilitarLinea) {
-    const path = normalizeTail(item.tail);
+  if (habilitarLinea && Array.isArray(item.tail) && item.tail.length) {
+    // tail viene como [{lat:"-4.x", lng:"-80.x"}, ...]
+    const path = item.tail
+      .map(p => ({ lat: toNum(p.lat), lng: toNum(p.lng) }))
+      .filter(p => p.lat !== null && p.lng !== null);
+
     if (path.length >= 2) {
       pl.setPath(path);
       pl.setOptions({ strokeColor: "#FFD400" });
       pl.setMap(map);
     } else {
-      // si no hay tail, no dibujamos línea pero el camión queda visible
       pl.setMap(null);
     }
   } else {
@@ -411,32 +398,24 @@ function updateTruck(id, item) {
   return true;
 }
 
+function setStatus(text) {
+  document.getElementById("status-text").textContent = "Estado: " + text;
+}
+
 async function tick() {
   try {
-    const results = await Promise.all(DEVICE_IDS.map(id => fetchDevice(id)));
+    const res = await fetchAll();
+
+    if (!res || res.ok !== true) {
+      setStatus("sin datos (cookie/endpoint) ⚠️");
+      return;
+    }
 
     let okAny = false;
 
-    for (const res of results) {
-      if (!res || res.ok !== true) continue;
-
-      // Tu worker puede devolver:
-      // 1) { ok:true, item:{...} }
-      // 2) { ok:true, camion1:{...}, camion2:{...} }
-      const candidates = [];
-      if (res.item) candidates.push(res.item);
-      if (res.camion1) candidates.push(res.camion1);
-      if (res.camion2) candidates.push(res.camion2);
-
-      for (const item of candidates) {
-        if (!item) continue;
-        const id = Number(item.id);
-        if (!Number.isFinite(id)) continue;
-
-        const updated = updateTruck(id, item);
-        if (updated) okAny = true;
-      }
-    }
+    // Tu worker retorna camion1/camion2
+    if (res.camion1) okAny = updateTruck(Number(res.camion1.id || 305), res.camion1) || okAny;
+    if (res.camion2) okAny = updateTruck(Number(res.camion2.id || 809), res.camion2) || okAny;
 
     if (okAny) {
       const horario = dentroDeHorarioRuta() ? " (ruta amarilla ON)" : " (ruta amarilla OFF por horario)";
@@ -450,12 +429,6 @@ async function tick() {
     setStatus("error al actualizar ❌");
   }
 }
-</script>
-
-<!-- Google Maps JS API (callback estable) -->
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&v=weekly&callback=initMap"
-  async defer>
 </script>
 
 <script>
@@ -505,4 +478,47 @@ input.addEventListener("keypress", (e) => {
 
 function processUserMessage() {
   const text = input.value.trim();
-  if (!text) return
+  if (!text) return;
+  userSay(text);
+  input.value = "";
+
+  if (step === 0) {
+    data.name = text;
+    step = 1;
+    setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
+  }
+  else if (step === 1) {
+    data.direccion = text;
+    step = 2;
+    setTimeout(() => botSay("Por favor describe la incidencia."), 500);
+  }
+  else if (step === 2) {
+    data.incidencia = text;
+    step = 3;
+    sendReport();
+  }
+}
+
+function sendReport() {
+  botSay("⏳ Enviando reporte, por favor espera...");
+
+  const msg =
+    "Dirección: " + data.direccion + "\n" +
+    "Incidencia: " + data.incidencia;
+
+  emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+    name: data.name,
+    time: new Date().toLocaleString(),
+    message: msg
+  })
+  .then(() => {
+    botSay("✔️ ¡Tu reporte fue enviado por correo!");
+  })
+  .catch(() => {
+    botSay("❌ Hubo un problema al enviar el correo.");
+  });
+}
+</script>
+
+</body>
+</html>
