@@ -17,118 +17,77 @@
   <style>
     body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
 
-    /* MAPA */
-    #gmap {
-      width: 100%;
-      height: 80vh;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 10px 25px rgba(0,0,0,.15);
-    }
-
-    /* Overlay cochera (no oculta el mapa) */
-    #cochera-overlay {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      z-index: 50;
-      pointer-events: none; /* deja interactuar el mapa */
-    }
-
     /* BOTÓN FLOTANTE */
     #chatbot-button {
-      position: fixed;
-      bottom: 25px;
-      right: 25px;
-      background: #1e3a8a;
-      color: white;
-      width: 65px;
-      height: 65px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      cursor: pointer;
+      position: fixed; bottom: 25px; right: 25px;
+      background: #1e3a8a; color: white;
+      width: 65px; height: 65px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; cursor: pointer;
       box-shadow: 0 6px 15px rgba(0,0,0,0.3);
       z-index: 9999;
     }
 
     /* VENTANA DEL CHAT */
     #chatbot-window {
-      width: 330px;
-      height: 480px;
-      background: white;
-      position: fixed;
-      bottom: 100px;
-      right: 25px;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.25);
-      display: none;
-      flex-direction: column;
-      overflow: hidden;
+      width: 330px; height: 480px; background: white;
+      position: fixed; bottom: 100px; right: 25px;
+      border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.25);
+      display: none; flex-direction: column; overflow: hidden;
       z-index: 9999;
     }
 
-    #chatbot-messages {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-      background: #e5e7eb;
-    }
+    #chatbot-messages { flex: 1; padding: 10px; overflow-y: auto; background: #e5e7eb; }
 
     .msg {
-      margin-bottom: 10px;
-      padding: 10px 14px;
-      max-width: 80%;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.3;
+      margin-bottom: 10px; padding: 10px 14px;
+      max-width: 80%; border-radius: 12px;
+      font-size: 14px; line-height: 1.3;
     }
+
     .bot { background: white; color: black; }
     .user { background: #1e3a8a; color: white; margin-left: auto; }
 
-    /* INPUT DE TEXTO */
-    #chat-input-box {
-      display: flex;
-      padding: 8px;
-      border-top: 1px solid #ddd;
-      background: white;
+    #chat-input-box { display: flex; padding: 8px; border-top: 1px solid #ddd; background: white; }
+    #user-input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
+    #send-btn { margin-left: 6px; background: #1e3a8a; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+
+    @keyframes fadeIn { 0%{opacity:0;transform:scale(0.95)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes slideUp { 0%{opacity:0;transform:translateY(25px)} 100%{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{transform:scale(1);filter:brightness(1)} 50%{transform:scale(1.06);filter:brightness(1.15)} }
+    @keyframes slide { 0%{transform:translateX(-30px);opacity:.3} 50%{transform:translateX(30px);opacity:1} 100%{transform:translateX(-30px);opacity:.3} }
+    @keyframes glow { 0%{box-shadow:0 0 0 0 rgba(255,255,255,0)} 50%{box-shadow:0 0 20px 5px rgba(255,255,255,.35)} 100%{box-shadow:0 0 0 0 rgba(255,255,255,0)} }
+
+    /* MAPA */
+    #map { width: 100%; height: 80vh; border-radius: 1rem; }
+    #cochera-map { width: 100%; height: 260px; border-radius: 1rem; }
+
+    /* Barra superior del mapa */
+    .mapbar {
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      margin-bottom: 10px;
     }
 
-    #user-input {
-      flex: 1;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+    .pill {
+      display:inline-flex; gap:8px; align-items:center;
+      padding: 10px 12px; border-radius: 999px;
+      background: white; box-shadow: 0 10px 18px rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.06);
     }
 
-    #send-btn {
-      margin-left: 6px;
-      background: #1e3a8a;
-      color: white;
-      padding: 8px 14px;
-      border-radius: 8px;
-      cursor: pointer;
+    .btn {
+      background:#1e3a8a; color:#fff; padding: 10px 12px;
+      border-radius: 12px; cursor:pointer; font-weight:700;
+      box-shadow: 0 10px 18px rgba(30,58,138,0.25);
+      user-select:none;
     }
 
-    /* ANIMACIONES PRO */
-    @keyframes fadeIn {
-      0% { opacity: 0; transform: scale(0.95); }
-      100% { opacity: 1; transform: scale(1); }
+    .badgeLive {
+      width:10px;height:10px;border-radius:999px;background:#16a34a;
+      box-shadow: 0 0 0 4px rgba(22,163,74,0.15);
     }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); filter: brightness(1); }
-      50% { transform: scale(1.06); filter: brightness(1.15); }
-    }
-    @keyframes glow {
-      0%   { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
-      50%  { box-shadow: 0 0 20px 5px rgba(255,255,255,0.35); }
-      100% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
-    }
+
+    .muted { color:#475569; font-size: 12px; }
   </style>
 </head>
 
@@ -143,8 +102,7 @@
       <img
         src="./logo-bellavista.jpeg"
         onerror="this.src='https://placehold.co/100x100/1e3a8a/ffffff?text=LOGO'"
-        class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl
-               ring-2 ring-white/40 animate-[pulse_4s_ease-in-out_infinite]"
+        class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl ring-2 ring-white/40 animate-[pulse_4s_ease-in-out_infinite]"
       >
       <div class="absolute inset-0 rounded-full animate-[glow_3s_infinite]"></div>
     </div>
@@ -163,43 +121,70 @@
 
 <!-- CONTENIDO PRINCIPAL -->
 <main class="p-4">
-  <!-- MAPA SIEMPRE PRESENTE (05:00 a 23:59 visible; 00:00 a 04:59 con overlay cochera) -->
-  <div class="relative">
-    <div id="gmap"></div>
 
-    <!-- Overlay cochera -->
-    <div id="cochera-overlay">
-      <div class="w-full max-w-4xl backdrop-blur-xl bg-blue-900/70 border border-white/20 rounded-3xl shadow-2xl p-8 md:p-10 animate-[fadeIn_1s_ease-out]">
-        <div class="flex flex-col md:flex-row items-center gap-8">
+  <!-- SECCIÓN MAPA (05:00 a 23:59) -->
+  <div id="map-section" class="hidden">
+    <div class="mapbar">
+      <div class="pill">
+        <span class="badgeLive" id="liveDot"></span>
+        <div>
+          <div class="font-extrabold text-slate-900 leading-tight">EN VIVO</div>
+          <div class="muted" id="liveStatus">Conectando…</div>
+        </div>
+      </div>
+
+      <div class="pill">
+        <div class="muted">Capas:</div>
+        <!-- Google Maps ya trae control; esto es solo un tip visual -->
+        <div class="muted font-semibold">Roadmap / Satellite / Hybrid / Terrain</div>
+      </div>
+
+      <div class="btn" id="btnRecenter">Centrar</div>
+    </div>
+
+    <div id="map" class="w-full rounded-xl shadow-xl"></div>
+  </div>
+
+  <!-- SECCIÓN COCHERA (00:00 a 04:59) -->
+  <div id="cochera-section" class="hidden flex items-center justify-center">
+    <div class="relative w-full flex items-center justify-center p-6">
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 opacity-95 rounded-3xl shadow-2xl"></div>
+
+      <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl
+                  p-8 md:p-10 max-w-6xl w-full flex flex-col md:flex-row items-center gap-10
+                  animate-[fadeIn_1s_ease-out]">
+
+        <div class="flex flex-col items-center">
           <img
             src="./logo-bellavista.jpeg"
             onerror="this.src='https://placehold.co/200x200/1e3a8a/ffffff?text=LOGO';"
-            class="w-28 h-28 md:w-36 md:h-36 rounded-full shadow-xl object-cover ring-4 ring-white/40"
+            class="w-40 h-40 md:w-44 md:h-44 rounded-full shadow-xl object-cover animate-[pulse_3s_infinite] ring-4 ring-white/40"
           >
-          <div class="text-center md:text-left text-white">
-            <h2 class="text-2xl md:text-3xl font-extrabold leading-tight drop-shadow-lg">
-              UNIDADES EN COCHERA
-              <span class="block text-blue-200">El servicio ha concluido por hoy</span>
-            </h2>
-            <p class="mt-3 text-blue-100 font-medium">
-              El monitoreo en vivo vuelve a las 05:00. Mientras tanto, las unidades permanecen visibles en el mapa.
-            </p>
-            <p class="mt-4 text-xs md:text-sm text-blue-200">
-              Horario del mapa: 05:00 a 23:59. Overlay cochera: 00:00 a 04:59.
-            </p>
+          <div class="mt-3 w-24 h-1 bg-gradient-to-r from-blue-300 to-white rounded-full animate-[slide_2s_infinite]"></div>
+        </div>
+
+        <div class="text-center md:text-left animate-[slideUp_1s_ease-out] flex-1">
+          <h2 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight text-white drop-shadow-lg">
+            LAS UNIDADES ESTÁN EN COCHERA
+            <span class="block text-blue-200">MONITOREO EN PAUSA (00:00 – 04:59)</span>
+          </h2>
+
+          <p class="text-lg md:text-xl mb-3 text-blue-100 font-medium">
+            El monitoreo en vivo se habilita automáticamente desde las 05:00.
+          </p>
+
+          <p class="text-base md:text-lg text-blue-200 font-semibold">
+            Igual te mostramos la última ubicación registrada de las unidades:
+          </p>
+
+          <div class="mt-5">
+            <div id="cochera-map" class="shadow-2xl"></div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Pequeño badge “En vivo” -->
-    <div class="absolute top-3 left-3 z-40">
-      <div class="bg-black/70 text-white text-xs md:text-sm px-3 py-2 rounded-full shadow-lg flex items-center gap-2">
-        <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
-        <span id="live-status">En vivo</span>
-      </div>
-    </div>
   </div>
+
 </main>
 
 <!-- BOTÓN FLOTANTE -->
@@ -218,27 +203,268 @@
   // =========================
   // CONFIG
   // =========================
-  const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
+  const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/";
   const POLL_MS = 5000;
 
-  // Horarios:
-  // Mapa visible: 05:00 - 23:59
-  // Overlay cochera: 00:00 - 04:59
-  function isCocheraHours() {
-    const h = new Date().getHours();
-    return (h >= 0 && h < 5);
-  }
+  const TRUCKS = [
+    { id: 305, name: "COMPACTADOR", label: "COMPACTADOR", iconUrl: "./compactador.png" },
+    { id: 809, name: "COMPACTADOR 2", label: "COMPACTADOR 2", iconUrl: "./compactador2.png" }
+  ];
 
+  // Si no tienes aún imágenes, usa ícono temporal
+  const FALLBACK_ICON = "https://maps.gstatic.com/mapfiles/ms2/micons/truck.png";
+
+  // =========================
+  // VISTA HORARIA
+  // =========================
   function configurarVista() {
-    const overlay = document.getElementById("cochera-overlay");
-    overlay.style.display = isCocheraHours() ? "flex" : "none";
+    const now = new Date();
+    const hour = now.getHours();
+
+    const mapSection = document.getElementById("map-section");
+    const cocheraSection = document.getElementById("cochera-section");
+
+    // Mapa 05:00 a 23:59
+    if (hour >= 5) {
+      mapSection.classList.remove("hidden");
+      cocheraSection.classList.add("hidden");
+      ensureMapsInit();
+    } else {
+      cocheraSection.classList.remove("hidden");
+      mapSection.classList.add("hidden");
+      ensureMapsInit(); // para el mapa pequeño de cochera
+    }
   }
 
   window.addEventListener("load", configurarVista);
-  setInterval(configurarVista, 30_000);
+  setInterval(configurarVista, 60 * 1000);
 
   // =========================
-  // CHATBOT (tu código igual)
+  // GOOGLE MAPS + EN VIVO
+  // =========================
+  let gmap = null;
+  let gmapCochera = null;
+  let markers = new Map();      // id -> google.maps.Marker
+  let polylines = new Map();    // id -> google.maps.Polyline
+  let liveTimer = null;
+
+  const liveStatus = document.getElementById("liveStatus");
+  const btnRecenter = document.getElementById("btnRecenter");
+
+  function ensureMapsInit() {
+    // initMap() la llama Google Maps al cargar, aquí solo aseguramos que el polling corra
+    if (window.__mapsReady) {
+      startLive();
+    }
+  }
+
+  // Esta función debe ser global para el callback de Google Maps
+  window.initMap = function initMap() {
+    window.__mapsReady = true;
+
+    // Mapa principal (HYBRID = satélite + nombres calles)
+    gmap = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: -4.8844, lng: -80.6778 },
+      zoom: 14,
+      mapTypeId: "hybrid",
+      mapTypeControl: true,        // capas
+      streetViewControl: false,
+      fullscreenControl: true
+    });
+
+    // Mapa en cochera (mismo estilo)
+    gmapCochera = new google.maps.Map(document.getElementById("cochera-map"), {
+      center: { lat: -4.8844, lng: -80.6778 },
+      zoom: 14,
+      mapTypeId: "hybrid",
+      mapTypeControl: true,
+      streetViewControl: false,
+      fullscreenControl: false
+    });
+
+    btnRecenter.onclick = () => recenterToMarkers();
+
+    startLive();
+  };
+
+  function startLive() {
+    if (!window.__mapsReady) return;
+    if (liveTimer) return;
+
+    // Arranca automático
+    refreshLive();
+    liveTimer = setInterval(refreshLive, POLL_MS);
+  }
+
+  function setStatus(text) {
+    if (liveStatus) liveStatus.textContent = text;
+  }
+
+  function parseTail(tail) {
+    // GPSEyes puede dar tail como [[lat,lng],...] o [{lat,lng},...]
+    if (!Array.isArray(tail)) return [];
+    const out = [];
+    for (const p of tail) {
+      if (Array.isArray(p) && p.length >= 2) out.push({ lat: Number(p[0]), lng: Number(p[1]) });
+      else if (p && typeof p === "object" && "lat" in p && "lng" in p) out.push({ lat: Number(p.lat), lng: Number(p.lng) });
+    }
+    return out;
+  }
+
+  function upsertMarkerAndLine(item, conf) {
+    if (!item || item.lat == null || item.lng == null) return;
+
+    const pos = { lat: Number(item.lat), lng: Number(item.lng) };
+    const tailPath = parseTail(item.tail);
+
+    // Asegura icono
+    const iconUrl = conf.iconUrl || FALLBACK_ICON;
+
+    // Marker (principal)
+    if (!markers.has(conf.id)) {
+      const mk = new google.maps.Marker({
+        position: pos,
+        map: gmap,
+        title: conf.label,
+        label: {
+          text: conf.label,
+          color: "white",
+          fontWeight: "700",
+          fontSize: "12px"
+        },
+        icon: {
+          url: iconUrl,
+          scaledSize: new google.maps.Size(52, 52)
+        }
+      });
+      markers.set(conf.id, mk);
+    } else {
+      markers.get(conf.id).setPosition(pos);
+      markers.get(conf.id).setMap(gmap);
+    }
+
+    // Marker en cochera map (clon simple)
+    // (Para no duplicar estructuras, mostramos solo en cochera map si está visible)
+    // Creamos un marker aparte con id negativo
+    const cocheraKey = "c_" + conf.id;
+    if (!markers.has(cocheraKey)) {
+      const mk2 = new google.maps.Marker({
+        position: pos,
+        map: gmapCochera,
+        title: conf.label,
+        label: {
+          text: conf.label,
+          color: "white",
+          fontWeight: "700",
+          fontSize: "12px"
+        },
+        icon: {
+          url: iconUrl,
+          scaledSize: new google.maps.Size(44, 44)
+        }
+      });
+      markers.set(cocheraKey, mk2);
+    } else {
+      markers.get(cocheraKey).setPosition(pos);
+      markers.get(cocheraKey).setMap(gmapCochera);
+    }
+
+    // Polyline (amarilla)
+    const fullPath = [...tailPath];
+    // Asegura último punto
+    if (fullPath.length === 0 || (fullPath[fullPath.length-1].lat !== pos.lat || fullPath[fullPath.length-1].lng !== pos.lng)) {
+      fullPath.push(pos);
+    }
+
+    if (!polylines.has(conf.id)) {
+      const pl = new google.maps.Polyline({
+        path: fullPath,
+        map: gmap,
+        strokeColor: "#FFD400",
+        strokeOpacity: 0.95,
+        strokeWeight: 5
+      });
+      polylines.set(conf.id, pl);
+    } else {
+      polylines.get(conf.id).setPath(fullPath);
+      polylines.get(conf.id).setMap(gmap);
+    }
+
+    // En cochera: no dibujamos línea (puede recargar), pero si quieres también:
+    const cocheraLineKey = "cl_" + conf.id;
+    if (!polylines.has(cocheraLineKey)) {
+      const pl2 = new google.maps.Polyline({
+        path: fullPath,
+        map: gmapCochera,
+        strokeColor: "#FFD400",
+        strokeOpacity: 0.9,
+        strokeWeight: 4
+      });
+      polylines.set(cocheraLineKey, pl2);
+    } else {
+      polylines.get(cocheraLineKey).setPath(fullPath);
+      polylines.get(cocheraLineKey).setMap(gmapCochera);
+    }
+  }
+
+  function recenterToMarkers() {
+    const bounds = new google.maps.LatLngBounds();
+    let any = false;
+
+    for (const conf of TRUCKS) {
+      const mk = markers.get(conf.id);
+      if (mk) {
+        bounds.extend(mk.getPosition());
+        any = true;
+      }
+    }
+
+    if (any) {
+      gmap.fitBounds(bounds);
+      gmapCochera.fitBounds(bounds);
+    }
+  }
+
+  async function refreshLive() {
+    try {
+      setStatus("Actualizando…");
+      const r = await fetch(WORKER_URL, { cache: "no-store" });
+      const data = await r.json();
+
+      if (!data || data.ok === false) {
+        setStatus("Error de conexión");
+        return;
+      }
+
+      // Tu Worker devuelve camion1 y camion2 (o null)
+      const c1 = data.camion1 || null;
+      const c2 = data.camion2 || null;
+
+      // Si el worker a veces viene vacío (unidades sin transmitir), igual no rompemos nada
+      for (const conf of TRUCKS) {
+        const item = (conf.id === 305) ? c1 : (conf.id === 809) ? c2 : null;
+        if (item) upsertMarkerAndLine(item, conf);
+      }
+
+      // Estado
+      const count = data.items_count ?? null;
+      const t = data.time ? new Date(data.time * 1000) : null;
+      const stamp = t ? t.toLocaleString() : "sin hora";
+      setStatus(`OK • ${stamp}${count != null ? " • items:" + count : ""}`);
+
+      // Si hay al menos 1 camión, centra la primera vez
+      if (!window.__centeredOnce && (c1 || c2)) {
+        window.__centeredOnce = true;
+        recenterToMarkers();
+      }
+    } catch (e) {
+      setStatus("Sin respuesta del servidor");
+      console.error(e);
+    }
+  }
+
+  // =========================
+  // CHATBOT (tal cual tu versión)
   // =========================
   const botBtn = document.getElementById("chatbot-button");
   const botWindow = document.getElementById("chatbot-window");
@@ -247,7 +473,7 @@
   const sendBtn = document.getElementById("send-btn");
 
   let step = 0;
-  let data = { name: "", direccion: "", incidencia: "" };
+  let dataForm = { name: "", direccion: "", incidencia: "" };
 
   function botSay(text) {
     const div = document.createElement("div");
@@ -277,9 +503,7 @@
   }
 
   sendBtn.onclick = () => processUserMessage();
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") processUserMessage();
-  });
+  input.addEventListener("keypress", (e) => { if (e.key === "Enter") processUserMessage(); });
 
   function processUserMessage() {
     const text = input.value.trim();
@@ -288,15 +512,17 @@
     input.value = "";
 
     if (step === 0) {
-      data.name = text;
+      dataForm.name = text;
       step = 1;
       setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
-    } else if (step === 1) {
-      data.direccion = text;
+    }
+    else if (step === 1) {
+      dataForm.direccion = text;
       step = 2;
       setTimeout(() => botSay("Por favor describe la incidencia."), 500);
-    } else if (step === 2) {
-      data.incidencia = text;
+    }
+    else if (step === 2) {
+      dataForm.incidencia = text;
       step = 3;
       sendReport();
     }
@@ -305,202 +531,20 @@
   function sendReport() {
     botSay("⏳ Enviando reporte, por favor espera...");
 
-    const msg = "Dirección: " + data.direccion + "\n" + "Incidencia: " + data.incidencia;
+    const msg = "Dirección: " + dataForm.direccion + "\n" + "Incidencia: " + dataForm.incidencia;
 
     emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-      name: data.name,
+      name: dataForm.name,
       time: new Date().toLocaleString(),
       message: msg
     })
     .then(() => botSay("✔️ ¡Tu reporte fue enviado por correo!"))
     .catch(() => botSay("❌ Hubo un problema al enviar el correo."));
   }
-
-  // =========================
-  // GOOGLE MAPS + RUTA AMARILLA EN VIVO
-  // =========================
-  let map;
-
-  // Estado por camión
-  const trucks = {
-    305: { name: "COMPACTADOR", marker: null, label: null, poly: null, path: [] },
-    809: { name: "COMPACTADOR 2", marker: null, label: null, poly: null, path: [] }
-  };
-
-  // Íconos (pon tus PNG en el repo con estos nombres)
-  const ICONS = {
-    305: { url: "./compactador.png", scaledSize: null },
-    809: { url: "./compactador2.png", scaledSize: null }
-  };
-
-  function buildMarkerIcon(id) {
-    // Ajusta tamaño a gusto
-    return {
-      url: ICONS[id]?.url || "./compactador.png",
-      scaledSize: new google.maps.Size(42, 42),
-      anchor: new google.maps.Point(21, 21)
-    };
-  }
-
-  function ensurePolyline(id) {
-    const t = trucks[id];
-    if (!t.poly) {
-      t.poly = new google.maps.Polyline({
-        path: [],
-        geodesic: true,
-        strokeColor: "#FFD400",  // amarillo
-        strokeOpacity: 0.95,
-        strokeWeight: 5,
-        map
-      });
-    }
-    return t.poly;
-  }
-
-  function upsertTruckFromItem(item) {
-    const id = Number(item.id);
-    const t = trucks[id];
-    if (!t) return;
-
-    const pos = { lat: Number(item.lat), lng: Number(item.lng) };
-    if (Number.isNaN(pos.lat) || Number.isNaN(pos.lng)) return;
-
-    // Marker
-    if (!t.marker) {
-      t.marker = new google.maps.Marker({
-        position: pos,
-        map,
-        icon: buildMarkerIcon(id),
-        title: t.name,
-      });
-
-      // Label encima
-      t.label = new google.maps.InfoWindow({
-        content: `<div style="font-weight:700;font-size:12px;color:#111;background:#fff;padding:4px 8px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.15)">${t.name}</div>`,
-        disableAutoPan: true
-      });
-      t.label.open({ map, anchor: t.marker, shouldFocus: false });
-
-    } else {
-      t.marker.setPosition(pos);
-      if (t.label) t.label.open({ map, anchor: t.marker, shouldFocus: false });
-    }
-
-    // Ruta: usamos tail si viene, si no, acumulamos punto a punto
-    let newPath = [];
-
-    if (Array.isArray(item.tail) && item.tail.length) {
-      // tail puede venir como [[lat,lng], ...] o como objetos; soportamos ambos
-      if (Array.isArray(item.tail[0])) {
-        newPath = item.tail.map(p => ({ lat: Number(p[0]), lng: Number(p[1]) })).filter(p => !Number.isNaN(p.lat) && !Number.isNaN(p.lng));
-      } else {
-        newPath = item.tail.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })).filter(p => !Number.isNaN(p.lat) && !Number.isNaN(p.lng));
-      }
-
-      // Asegura que el último sea la posición actual
-      if (!newPath.length || newPath[newPath.length-1].lat !== pos.lat || newPath[newPath.length-1].lng !== pos.lng) {
-        newPath.push(pos);
-      }
-
-      t.path = newPath;
-    } else {
-      // fallback: acumular por polling
-      const last = t.path[t.path.length - 1];
-      if (!last || Math.abs(last.lat - pos.lat) > 0.00001 || Math.abs(last.lng - pos.lng) > 0.00001) {
-        t.path.push(pos);
-      }
-    }
-
-    // Pintar polilínea amarilla
-    const poly = ensurePolyline(id);
-    poly.setPath(t.path);
-  }
-
-  async function pollLive() {
-    try {
-      const res = await fetch(WORKER_URL, { cache: "no-store" });
-      const data = await res.json();
-
-      // Tu worker devuelve camion1/camion2 como objetos “item”
-      if (data && data.ok) {
-        const items = [];
-        if (data.camion1) items.push(data.camion1);
-        if (data.camion2) items.push(data.camion2);
-
-        // A veces GPSEyes manda solo 1 item; igual funciona
-        items.forEach(upsertTruckFromItem);
-
-        document.getElementById("live-status").textContent = "En vivo";
-      } else {
-        document.getElementById("live-status").textContent = "Sin datos";
-      }
-    } catch (e) {
-      document.getElementById("live-status").textContent = "Error";
-      console.error(e);
-    }
-  }
-
-  // Selector de capas (roadmap / satellite / hybrid / terrain)
-  function addMapTypeControl() {
-    const controlDiv = document.createElement("div");
-    controlDiv.style.margin = "12px";
-    controlDiv.style.background = "rgba(0,0,0,.70)";
-    controlDiv.style.borderRadius = "999px";
-    controlDiv.style.padding = "8px";
-    controlDiv.style.display = "flex";
-    controlDiv.style.gap = "6px";
-    controlDiv.style.boxShadow = "0 10px 25px rgba(0,0,0,.25)";
-
-    const types = [
-      { id: "hybrid", label: "Satélite (Calles)" },   // ✅ lo que quieres por defecto
-      { id: "roadmap", label: "Mapa" },
-      { id: "satellite", label: "Satélite" },
-      { id: "terrain", label: "Relieve" }
-    ];
-
-    types.forEach(t => {
-      const btn = document.createElement("button");
-      btn.textContent = t.label;
-      btn.style.color = "white";
-      btn.style.fontSize = "12px";
-      btn.style.fontWeight = "700";
-      btn.style.padding = "8px 12px";
-      btn.style.borderRadius = "999px";
-      btn.style.border = "1px solid rgba(255,255,255,.25)";
-      btn.style.background = "rgba(255,255,255,.08)";
-      btn.style.cursor = "pointer";
-      btn.onclick = () => map.setMapTypeId(t.id);
-      controlDiv.appendChild(btn);
-    });
-
-    map.controls[google.maps.ControlPosition.TOP_RIGHT].push(controlDiv);
-  }
-
-  // Google llama esto automáticamente cuando carga el script
-  window.initMap = function initMap() {
-    // Centro inicial (Bellavista/Sullana aprox; ajústalo si quieres)
-    const center = { lat: -4.8844, lng: -80.6778 };
-
-    map = new google.maps.Map(document.getElementById("gmap"), {
-      center,
-      zoom: 14,
-      mapTypeId: "hybrid",        // ✅ satélite + nombres de calles
-      streetViewControl: false,
-      fullscreenControl: true,
-      mapTypeControl: false,      // usamos control custom
-      clickableIcons: false
-    });
-
-    addMapTypeControl();
-
-    // ✅ “En vivo” arranca automático
-    pollLive();
-    setInterval(pollLive, POLL_MS);
-  };
 </script>
 
-<!-- GOOGLE MAPS (pega tu API KEY) -->
-<script async
+<!-- GOOGLE MAPS (pon tu key aquí) -->
+<script async defer
   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&callback=initMap">
 </script>
 
