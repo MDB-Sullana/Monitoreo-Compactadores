@@ -8,12 +8,14 @@
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Leaflet (MAPA PROPIO) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- EmailJS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
-        emailjs.init({
-            publicKey: "IGGKWnrPTdwnN39yS",
-        });
+        emailjs.init({ publicKey: "IGGKWnrPTdwnN39yS" });
     </script>
 
     <style>
@@ -98,32 +100,65 @@
         }
 
         /* ANIMACIONES PRO */
-        @keyframes fadeIn {
-            0% { opacity: 0; transform: scale(0.95); }
-            100% { opacity: 1; transform: scale(1); }
+        @keyframes fadeIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { 0% { opacity: 0; transform: translateY(25px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.06); filter: brightness(1.15); } }
+        @keyframes slide { 0% { transform: translateX(-30px); opacity: 0.3; } 50% { transform: translateX(30px); opacity: 1; } 100% { transform: translateX(-30px); opacity: 0.3; } }
+        @keyframes glow { 0% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0);} 50% { box-shadow: 0 0 20px 5px rgba(255,255,255,0.35);} 100% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0);} }
+
+        /* Contenedor mapa */
+        #leaflet-map {
+            width: 100%;
+            height: 80vh;
+            border-radius: 0.75rem;
         }
 
-        @keyframes slideUp {
-            0% { opacity: 0; transform: translateY(25px); }
-            100% { opacity: 1; transform: translateY(0); }
+        /* Barra "En vivo" */
+        .livebar {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 500;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.92);
+            color: white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            backdrop-filter: blur(8px);
         }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.06); filter: brightness(1.15); }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+            animation: pulseDot 1.6s infinite;
         }
-
-        @keyframes slide {
-            0% { transform: translateX(-30px); opacity: 0.3; }
-            50% { transform: translateX(30px); opacity: 1; }
-            100% { transform: translateX(-30px); opacity: 0.3; }
+        @keyframes pulseDot {
+            0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
         }
-
-        @keyframes glow {
-            0%   { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
-            50%  { box-shadow: 0 0 20px 5px rgba(255,255,255,0.35); }
-            100% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
+        .badge {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.15);
         }
+        .btn-mini {
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.18);
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn-mini:hover { background: rgba(255,255,255,0.20); }
     </style>
 </head>
 
@@ -137,7 +172,7 @@
 
         <!-- LOGO ANIMADO -->
         <div class="relative">
-            <img 
+            <img
                 src="./logo-bellavista.jpeg"
                 onerror="this.src='https://placehold.co/100x100/1e3a8a/ffffff?text=LOGO'"
                 class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl
@@ -148,7 +183,6 @@
 
         <!-- TEXTO -->
         <div class="flex flex-col justify-center text-white">
-            
             <span class="text-xs md:text-sm uppercase tracking-wide text-blue-200 font-semibold">
                 Municipalidad Distrital de Bellavista
             </span>
@@ -164,33 +198,37 @@
 
 <!-- CONTENIDO PRINCIPAL -->
 <main class="p-4">
-    <!-- SECCIÓN MAPA (5:00 a 12:59) -->
-    <div id="map-section" class="hidden">
-        <iframe 
-            src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
-            class="w-full h-[80vh] rounded-xl shadow-xl"
-            frameborder="0"
-            allowfullscreen>
-        </iframe>
+    <!-- SECCIÓN MAPA (EN VIVO) -->
+    <div id="map-section" class="hidden relative">
+        <!-- Livebar -->
+        <div class="livebar">
+            <div class="dot" id="live-dot"></div>
+            <div class="font-semibold">En vivo</div>
+            <div class="badge" id="live-status">Conectando...</div>
+            <div class="badge" id="live-clock">--:--:--</div>
+            <div class="btn-mini" id="btn-center">Centrar</div>
+            <div class="btn-mini" id="btn-clear">Borrar ruta</div>
+        </div>
+
+        <div id="leaflet-map" class="w-full rounded-xl shadow-xl"></div>
     </div>
 
-    <!-- SECCIÓN COCHERA PRO (13:00 a 4:59) -->
+    <!-- SECCIÓN COCHERA PRO (FUERA DE HORARIO) -->
     <div id="cochera-section" class="hidden flex items-center justify-center h-[80vh]">
-        
-        <div class="relative w-full flex items-center justify-center p-6">
 
+        <div class="relative w-full flex items-center justify-center p-6">
             <!-- Fondo PRO -->
             <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 opacity-95 rounded-3xl shadow-2xl"></div>
 
             <!-- TARJETA PRO -->
-            <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl 
+            <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl
                         p-8 md:p-12 max-w-5xl w-full flex flex-col md:flex-row items-center gap-10
                         animate-[fadeIn_1s_ease-out]">
 
                 <!-- LOGO -->
                 <div class="flex flex-col items-center">
-                    <img 
-                        src="./logo-bellavista.jpeg" 
+                    <img
+                        src="./logo-bellavista.jpeg"
                         onerror="this.src='https://placehold.co/200x200/1e3a8a/ffffff?text=LOGO';"
                         class="w-40 h-40 md:w-48 md:h-48 rounded-full shadow-xl object-cover animate-[pulse_3s_infinite] ring-4 ring-white/40"
                     >
@@ -200,7 +238,6 @@
 
                 <!-- TEXTO -->
                 <div class="text-center md:text-left animate-[slideUp_1s_ease-out]">
-
                     <h2 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight text-white drop-shadow-lg">
                         EL SERVICIO DE RECOLECCIÓN HA CONCLUIDO POR HOY
                         <span class="block text-blue-200">NUESTROS CAMIONES ESTÁN EN COCHERA</span>
@@ -215,7 +252,7 @@
                     </p>
 
                     <p class="mt-6 text-xs md:text-sm text-blue-300 font-light">
-                        Horario del monitoreo: de 5:00 a 13:00 horas.
+                        Horarios de monitoreo EN VIVO: 7:00–12:30 y 14:00–22:00.
                     </p>
                 </div>
             </div>
@@ -236,109 +273,301 @@
 </div>
 
 <script>
-    // ----- LÓGICA HORARIA -----
-    function configurarVista() {
-        const now = new Date();
-        const hour = now.getHours();
-        const mapSection = document.getElementById("map-section");
-        const cocheraSection = document.getElementById("cochera-section");
+/* ==========================
+   1) HORARIOS (EN VIVO)
+   En vivo: 07:00–12:30 y 14:00–22:00
+   ========================== */
+function enHorarioMonitoreo(now = new Date()) {
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const minutos = h * 60 + m;
 
-        if (hour >= 22 || hour < 5) {
-            cocheraSection.classList.remove("hidden");
-            mapSection.classList.add("hidden");
-        } else {
-            mapSection.classList.remove("hidden");
-            cocheraSection.classList.add("hidden");
+    const morningStart = 7 * 60;         // 07:00
+    const morningEnd   = 12 * 60 + 30;   // 12:30
+    const afternoonStart = 14 * 60;      // 14:00
+    const afternoonEnd   = 22 * 60;      // 22:00
+
+    return (minutos >= morningStart && minutos <= morningEnd) ||
+           (minutos >= afternoonStart && minutos <= afternoonEnd);
+}
+
+function configurarVista() {
+    const now = new Date();
+    const mapSection = document.getElementById("map-section");
+    const cocheraSection = document.getElementById("cochera-section");
+
+    if (enHorarioMonitoreo(now)) {
+        cocheraSection.classList.add("hidden");
+        mapSection.classList.remove("hidden");
+        // Auto: iniciar en vivo al entrar al horario
+        iniciarEnVivoSiNo();
+    } else {
+        mapSection.classList.add("hidden");
+        cocheraSection.classList.remove("hidden");
+        detenerEnVivo();
+    }
+}
+
+window.addEventListener("load", configurarVista);
+// Revisa horario cada 30s (por si cambia de turno)
+setInterval(configurarVista, 30000);
+
+
+/* ==========================
+   2) MAPA + RUTA EN VIVO
+   ========================== */
+
+// TU WORKER
+const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/";
+
+// IDs reales
+const TRUCK_IDS = {
+    camion1: 305, // COMPACTADOR
+    camion2: 809  // COMPACTADOR 2
+};
+
+let map = null;
+let pollTimer = null;
+let trackingActive = false;
+
+const state = {
+    camion1: { points: [], marker: null, poly: null, lastLatLng: null },
+    camion2: { points: [], marker: null, poly: null, lastLatLng: null }
+};
+
+function setLiveStatus(text, ok=true) {
+    const el = document.getElementById("live-status");
+    el.textContent = text;
+    const dot = document.getElementById("live-dot");
+    dot.style.background = ok ? "#22c55e" : "#ef4444";
+}
+
+function tickClock() {
+    const el = document.getElementById("live-clock");
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString();
+}
+setInterval(tickClock, 1000);
+
+function initMapOnce() {
+    if (map) return;
+
+    // Centro inicial (se ajusta luego cuando llegue data)
+    map = L.map('leaflet-map', { zoomControl: true }).setView([-4.8844, -80.6778], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Botones
+    document.getElementById("btn-center").onclick = () => centrarMapa();
+    document.getElementById("btn-clear").onclick = () => borrarRutas();
+}
+
+function borrarRutas() {
+    for (const key of ["camion1", "camion2"]) {
+        state[key].points = [];
+        state[key].lastLatLng = null;
+        if (state[key].poly) {
+            map.removeLayer(state[key].poly);
+            state[key].poly = null;
         }
     }
+    setLiveStatus("Ruta borrada", true);
+}
 
-    window.addEventListener("load", configurarVista);
+function centrarMapa() {
+    const bounds = [];
+    for (const key of ["camion1", "camion2"]) {
+        const m = state[key].marker;
+        if (m) bounds.push(m.getLatLng());
+    }
+    if (bounds.length === 1) {
+        map.setView(bounds[0], 16);
+    } else if (bounds.length > 1) {
+        map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] });
+    }
+}
 
-    // ----- CHATBOT -----
-    const botBtn = document.getElementById("chatbot-button");
-    const botWindow = document.getElementById("chatbot-window");
-    const messages = document.getElementById("chatbot-messages");
-    const input = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
+// Añade punto y dibuja polilínea amarilla
+function upsertTruck(truckKey, lat, lng, label) {
+    const t = state[truckKey];
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return;
 
-    let step = 0;
-    let data = { name: "", direccion: "", incidencia: "" };
+    // Evitar duplicados exactos
+    const last = t.lastLatLng;
+    if (last && Math.abs(last.lat - latNum) < 0.000001 && Math.abs(last.lng - lngNum) < 0.000001) {
+        return;
+    }
+    t.lastLatLng = { lat: latNum, lng: lngNum };
 
-    function botSay(text) {
-        const div = document.createElement("div");
-        div.className = "msg bot";
-        div.innerHTML = text;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
+    // Guardar puntos (ruta)
+    t.points.push([latNum, lngNum]);
+
+    // Marker
+    if (!t.marker) {
+        t.marker = L.marker([latNum, lngNum]).addTo(map).bindPopup(label);
+    } else {
+        t.marker.setLatLng([latNum, lngNum]);
     }
 
-    function userSay(text) {
-        const div = document.createElement("div");
-        div.className = "msg user";
-        div.innerHTML = text;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
+    // Polyline AMARILLA
+    if (!t.poly) {
+        t.poly = L.polyline(t.points, {
+            color: "#FFD400",
+            weight: 5,
+            opacity: 0.9
+        }).addTo(map);
+    } else {
+        t.poly.setLatLngs(t.points);
     }
+}
 
-    botBtn.onclick = () => {
-        botWindow.style.display =
-            botWindow.style.display === "flex" ? "none" : "flex";
-        if (messages.innerHTML.trim() === "") startChat();
-    };
+// Consume el Worker (soporta 2 formatos: camion1/camion2 o items[])
+async function fetchPositions() {
+    try {
+        const r = await fetch(WORKER_URL, { cache: "no-store" });
+        const data = await r.json();
 
-    function startChat() {
-        step = 0;
-        botSay("👋 Hola vecino, gracias por apoyar el monitoreo ciudadano.");
-        setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
-    }
-
-    sendBtn.onclick = () => processUserMessage();
-    input.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") processUserMessage();
-    });
-
-    function processUserMessage() {
-        const text = input.value.trim();
-        if (!text) return;
-        userSay(text);
-        input.value = "";
-
-        if (step === 0) {
-            data.name = text;
-            step = 1;
-            setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
-        } 
-        else if (step === 1) {
-            data.direccion = text;
-            step = 2;
-            setTimeout(() => botSay("Por favor describe la incidencia."), 500);
-        } 
-        else if (step === 2) {
-            data.incidencia = text;
-            step = 3;
-            sendReport();
+        if (!data || data.ok === false) {
+            setLiveStatus("Error de conexión", false);
+            return;
         }
+
+        // 1) Formato esperado: camion1/camion2
+        if (data.camion1 || data.camion2) {
+            if (data.camion1 && data.camion1.lat && data.camion1.lng) {
+                upsertTruck("camion1", data.camion1.lat, data.camion1.lng, "COMPACTADOR");
+            }
+            if (data.camion2 && data.camion2.lat && data.camion2.lng) {
+                upsertTruck("camion2", data.camion2.lat, data.camion2.lng, "COMPACTADOR 2");
+            }
+        }
+        // 2) Formato alterno: items[]
+        else if (Array.isArray(data.items)) {
+            for (const it of data.items) {
+                const id = Number(it.id);
+                if (id === TRUCK_IDS.camion1) upsertTruck("camion1", it.lat, it.lng, it.name || "COMPACTADOR");
+                if (id === TRUCK_IDS.camion2) upsertTruck("camion2", it.lat, it.lng, it.name || "COMPACTADOR 2");
+            }
+        }
+
+        // status
+        const hasAny = !!(state.camion1.marker || state.camion2.marker);
+        setLiveStatus(hasAny ? "Transmitiendo" : "Sin datos (posible cochera)", true);
+
+        // Autocentrar primera vez cuando haya data
+        if (hasAny && !fetchPositions._didCenterOnce) {
+            fetchPositions._didCenterOnce = true;
+            centrarMapa();
+        }
+
+    } catch (e) {
+        setLiveStatus("Sin conexión", false);
+        console.error(e);
     }
+}
 
-    function sendReport() {
-        botSay("⏳ Enviando reporte, por favor espera...");
+function iniciarEnVivoSiNo() {
+    if (trackingActive) return;
+    initMapOnce();
+    trackingActive = true;
 
-        const msg =
-            "Dirección: " + data.direccion + "\n" +
-            "Incidencia: " + data.incidencia;
+    // AUTO: arranca en vivo apenas entra al horario (sin botón)
+    setLiveStatus("Conectando...", true);
+    fetchPositions();
+    pollTimer = setInterval(fetchPositions, 5000); // cada 5s (puedes poner 8s si quieres menos consumo)
+}
 
-        emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-            name: data.name,
-            time: new Date().toLocaleString(),
-            message: msg
-        })
-        .then(() => {
-            botSay("✔️ ¡Tu reporte fue enviado por correo!");
-        })
-        .catch(() => {
-            botSay("❌ Hubo un problema al enviar el correo.");
-        });
+function detenerEnVivo() {
+    trackingActive = false;
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+    fetchPositions._didCenterOnce = false;
+}
+
+
+/* ==========================
+   3) CHATBOT (TU MISMO)
+   ========================== */
+const botBtn = document.getElementById("chatbot-button");
+const botWindow = document.getElementById("chatbot-window");
+const messages = document.getElementById("chatbot-messages");
+const input = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
+
+let step = 0;
+let dataForm = { name: "", direccion: "", incidencia: "" };
+
+function botSay(text) {
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function userSay(text) {
+    const div = document.createElement("div");
+    div.className = "msg user";
+    div.innerHTML = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+botBtn.onclick = () => {
+    botWindow.style.display = (botWindow.style.display === "flex" ? "none" : "flex");
+    if (messages.innerHTML.trim() === "") startChat();
+};
+
+function startChat() {
+    step = 0;
+    botSay("👋 Hola vecino, gracias por apoyar el monitoreo ciudadano.");
+    setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
+}
+
+sendBtn.onclick = () => processUserMessage();
+input.addEventListener("keypress", (e) => { if (e.key === "Enter") processUserMessage(); });
+
+function processUserMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+    userSay(text);
+    input.value = "";
+
+    if (step === 0) {
+        dataForm.name = text;
+        step = 1;
+        setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
     }
+    else if (step === 1) {
+        dataForm.direccion = text;
+        step = 2;
+        setTimeout(() => botSay("Por favor describe la incidencia."), 500);
+    }
+    else if (step === 2) {
+        dataForm.incidencia = text;
+        step = 3;
+        sendReport();
+    }
+}
+
+function sendReport() {
+    botSay("⏳ Enviando reporte, por favor espera...");
+
+    const msg = "Dirección: " + dataForm.direccion + "\n" + "Incidencia: " + dataForm.incidencia;
+
+    emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+        name: dataForm.name,
+        time: new Date().toLocaleString(),
+        message: msg
+    })
+    .then(() => botSay("✔️ ¡Tu reporte fue enviado por correo!"))
+    .catch(() => botSay("❌ Hubo un problema al enviar el correo."));
+}
 </script>
 
 </body>
