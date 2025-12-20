@@ -14,11 +14,6 @@
     emailjs.init({ publicKey: "IGGKWnrPTdwnN39yS" });
   </script>
 
-  <!-- Google Maps JS API -->
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&v=weekly">
-  </script>
-
   <style>
     body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
 
@@ -108,6 +103,7 @@
     .truck-wrap{
       position: relative;
       transform: translate(-50%, -100%);
+      pointer-events: none;
     }
     .truck-img{
       width: 44px;
@@ -153,7 +149,7 @@
     <div class="badge">🟡 Ruta en vivo + Camiones siempre visibles</div>
     <div class="btn" id="btn-live">En vivo (Auto)</div>
     <div class="btn secondary" id="btn-center">Centrar</div>
-    <div class="badge" id="status-text">Estado: iniciando…</div>
+    <div class="badge" id="status-text">Estado: cargando mapa…</div>
   </div>
 
   <!-- MAPA -->
@@ -178,7 +174,7 @@
    CONFIG
 ========================= */
 const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
-const DEVICE_IDS = [305, 809]; // por si tu worker soporta ?device_id=
+const DEVICE_IDS = [305, 809]; // COMPACTADOR y COMPACTADOR 2
 const POLL_MS = 8000; // cada 8s
 
 // Iconos (deben existir en tu repo)
@@ -207,7 +203,6 @@ function dentroDeHorarioRuta() {
 ========================= */
 let map;
 let liveTimer = null;
-
 const polylines = new Map();   // id -> google.maps.Polyline
 
 // Custom marker label (HTML) usando OverlayView
@@ -276,6 +271,11 @@ class HtmlMarker extends google.maps.OverlayView {
 
 const htmlMarkers = new Map(); // id -> HtmlMarker
 
+function setStatus(text) {
+  const el = document.getElementById("status-text");
+  if (el) el.textContent = "Estado: " + text;
+}
+
 function initMap() {
   // Centro Bellavista aprox
   const center = { lat: -4.8848, lng: -80.6781 };
@@ -283,14 +283,14 @@ function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center,
     zoom: 15,
-    mapTypeId: "hybrid",
+    mapTypeId: "hybrid", // satélite + nombres de calles
     streetViewControl: false,
     mapTypeControl: true,
     fullscreenControl: true,
     gestureHandling: "greedy"
   });
 
-  document.getElementById("status-text").textContent = "Estado: mapa listo ✅";
+  setStatus("mapa listo ✅");
 
   // Auto arrancar “En vivo”
   startLive();
@@ -306,62 +306,32 @@ function initMap() {
   });
 }
 
+// Hacer accesible para callback de Google Maps
+window.initMap = initMap;
+
 function stopLive() {
   clearInterval(liveTimer);
   liveTimer = null;
   document.getElementById("btn-live").textContent = "En vivo (OFF)";
-  document.getElementById("status-text").textContent = "Estado: en vivo detenido ⏸️";
+  setStatus("en vivo detenido ⏸️");
 }
 
 function startLive() {
   document.getElementById("btn-live").textContent = "En vivo (ON)";
-  document.getElementById("status-text").textContent = "Estado: cargando camiones…";
+  setStatus("cargando camiones…");
   tick(); // una vez al inicio
   liveTimer = setInterval(tick, POLL_MS);
 }
 
 /* =========================
-   FETCH + NORMALIZACIÓN
+   FETCH + DIBUJO
 ========================= */
-
-// Soporta tu endpoint en 2 modos:
-// 1) ?device_id=305 (retorna item)
-// 2) sin device_id (retorna camion1/camion2)
-async function fetchWorker(deviceIdOrNull) {
-  const url =
-    WORKER_URL +
-    (deviceIdOrNull ? ("?device_id=" + encodeURIComponent(deviceIdOrNull)) : "") +
-    (WORKER_URL.includes("?") || deviceIdOrNull ? "&" : "?") +
-    "_=" + Date.now();
-
+async function fetchDevice(id) {
+  const url = WORKER_URL + "?device_id=" + encodeURIComponent(id) + "&_=" + Date.now();
   const r = await fetch(url, { cache: "no-store" });
   return await r.json();
 }
 
-function toNum(v) {
-  const n = typeof v === "number" ? v : parseFloat(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-// Convierte cualquier respuesta del worker en una lista de "items" (camiones)
-function normalizeToItems(res) {
-  if (!res || res.ok !== true) return [];
-
-  // Caso A: worker devuelve { item: {...} }
-  if (res.item && (res.item.lat != null) && (res.item.lng != null)) {
-    return [res.item];
-  }
-
-  // Caso B: worker devuelve { camion1: {...}, camion2: {...} }
-  const items = [];
-  if (res.camion1) items.push(res.camion1);
-  if (res.camion2) items.push(res.camion2);
-  return items;
-}
-
-/* =========================
-   DIBUJO
-========================= */
 function ensurePolyline(id) {
   if (polylines.has(id)) return polylines.get(id);
 
@@ -370,17 +340,42 @@ function ensurePolyline(id) {
     geodesic: true,
     strokeOpacity: 0.95,
     strokeWeight: 5,
-    strokeColor: "#FFD400"
+    strokeColor: "#FFD400" // AMARILLO
   });
   pl.setMap(map);
   polylines.set(id, pl);
   return pl;
 }
 
+function toNum(x) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function normalizeTail(tail) {
+  if (!Array.isArray(tail)) return [];
+
+  // Caso A: [{lat:"..", lng:".."}, ...]
+  if (tail.length && typeof tail[0] === "object" && tail[0] !== null && "lat" in tail[0] && "lng" in tail[0]) {
+    return tail
+      .map(p => ({ lat: toNum(p.lat), lng: toNum(p.lng) }))
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  }
+
+  // Caso B: [[lat, lng], ...] (por si algún día cambia)
+  if (tail.length && Array.isArray(tail[0]) && tail[0].length >= 2) {
+    return tail
+      .map(a => ({ lat: toNum(a[0]), lng: toNum(a[1]) }))
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  }
+
+  return [];
+}
+
 function updateTruck(id, item) {
   const lat = toNum(item.lat);
   const lng = toNum(item.lng);
-  if (lat == null || lng == null) return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
 
   const pos = new google.maps.LatLng(lat, lng);
 
@@ -398,22 +393,14 @@ function updateTruck(id, item) {
   const habilitarLinea = dentroDeHorarioRuta();
   const pl = ensurePolyline(id);
 
-  if (habilitarLinea && Array.isArray(item.tail) && item.tail.length) {
-    // TU CASO REAL: tail = [{lat:"..", lng:".."}, ...]
-    const path = item.tail
-      .map(p => {
-        const la = toNum(p.lat);
-        const ln = toNum(p.lng);
-        if (la == null || ln == null) return null;
-        return { lat: la, lng: ln };
-      })
-      .filter(Boolean);
-
-    if (path.length) {
+  if (habilitarLinea) {
+    const path = normalizeTail(item.tail);
+    if (path.length >= 2) {
       pl.setPath(path);
       pl.setOptions({ strokeColor: "#FFD400" });
       pl.setMap(map);
     } else {
+      // si no hay tail, no dibujamos línea pero el camión queda visible
       pl.setMap(null);
     }
   } else {
@@ -424,32 +411,31 @@ function updateTruck(id, item) {
   return true;
 }
 
-function setStatus(text) {
-  document.getElementById("status-text").textContent = "Estado: " + text;
-}
-
 async function tick() {
   try {
-    // Primero intentamos modo "global" (camion1/camion2) - tu respuesta actual
-    let resGlobal = null;
-    try {
-      resGlobal = await fetchWorker(null);
-    } catch (_) {}
-
-    let items = normalizeToItems(resGlobal);
-
-    // Si no vino nada, intentamos modo por device_id (por si lo usas también)
-    if (!items.length) {
-      const results = await Promise.all(DEVICE_IDS.map(id => fetchWorker(id)));
-      items = results.flatMap(r => normalizeToItems(r));
-    }
+    const results = await Promise.all(DEVICE_IDS.map(id => fetchDevice(id)));
 
     let okAny = false;
-    for (const item of items) {
-      const id = Number(item.id) || 0;
-      if (!id) continue;
-      const ok = updateTruck(id, item);
-      if (ok) okAny = true;
+
+    for (const res of results) {
+      if (!res || res.ok !== true) continue;
+
+      // Tu worker puede devolver:
+      // 1) { ok:true, item:{...} }
+      // 2) { ok:true, camion1:{...}, camion2:{...} }
+      const candidates = [];
+      if (res.item) candidates.push(res.item);
+      if (res.camion1) candidates.push(res.camion1);
+      if (res.camion2) candidates.push(res.camion2);
+
+      for (const item of candidates) {
+        if (!item) continue;
+        const id = Number(item.id);
+        if (!Number.isFinite(id)) continue;
+
+        const updated = updateTruck(id, item);
+        if (updated) okAny = true;
+      }
     }
 
     if (okAny) {
@@ -464,16 +450,12 @@ async function tick() {
     setStatus("error al actualizar ❌");
   }
 }
+</script>
 
-/* Espera a que cargue Google Maps */
-(function waitForMaps() {
-  const t = setInterval(() => {
-    if (window.google && google.maps && google.maps.Map) {
-      clearInterval(t);
-      initMap();
-    }
-  }, 100);
-})();
+<!-- Google Maps JS API (callback estable) -->
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&v=weekly&callback=initMap"
+  async defer>
 </script>
 
 <script>
@@ -523,47 +505,4 @@ input.addEventListener("keypress", (e) => {
 
 function processUserMessage() {
   const text = input.value.trim();
-  if (!text) return;
-  userSay(text);
-  input.value = "";
-
-  if (step === 0) {
-    data.name = text;
-    step = 1;
-    setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
-  }
-  else if (step === 1) {
-    data.direccion = text;
-    step = 2;
-    setTimeout(() => botSay("Por favor describe la incidencia."), 500);
-  }
-  else if (step === 2) {
-    data.incidencia = text;
-    step = 3;
-    sendReport();
-  }
-}
-
-function sendReport() {
-  botSay("⏳ Enviando reporte, por favor espera...");
-
-  const msg =
-    "Dirección: " + data.direccion + "\n" +
-    "Incidencia: " + data.incidencia;
-
-  emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-    name: data.name,
-    time: new Date().toLocaleString(),
-    message: msg
-  })
-  .then(() => {
-    botSay("✔️ ¡Tu reporte fue enviado por correo!");
-  })
-  .catch(() => {
-    botSay("❌ Hubo un problema al enviar el correo.");
-  });
-}
-</script>
-
-</body>
-</html>
+  if (!text) return
