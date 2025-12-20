@@ -178,7 +178,6 @@
    CONFIG
 ========================= */
 const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
-const DEVICE_IDS = [305, 809]; // COMPACTADOR y COMPACTADOR 2
 const POLL_MS = 8000; // cada 8s
 
 // Iconos (deben existir en tu repo)
@@ -208,7 +207,6 @@ function dentroDeHorarioRuta() {
 let map;
 let liveTimer = null;
 
-const markers = new Map();     // id -> google.maps.Marker
 const polylines = new Map();   // id -> google.maps.Polyline
 
 // Custom marker label (HTML) usando OverlayView
@@ -273,6 +271,14 @@ class HtmlMarker extends google.maps.OverlayView {
       if (label) label.textContent = name;
     }
   }
+
+  setIcon(iconUrl) {
+    this.iconUrl = iconUrl;
+    if (this.div) {
+      const img = this.div.querySelector(".truck-img");
+      if (img) img.src = iconUrl;
+    }
+  }
 }
 
 const htmlMarkers = new Map(); // id -> HtmlMarker
@@ -324,9 +330,9 @@ function startLive() {
 /* =========================
    FETCH + DIBUJO
 ========================= */
-async function fetchDevice(id) {
-  const url = WORKER_URL + "?device_id=" + encodeURIComponent(id) + "&_=" + Date.now();
-  const r = await fetch(url);
+async function fetchAll() {
+  const url = WORKER_URL + "?_=" + Date.now();
+  const r = await fetch(url, { cache: "no-store" });
   return await r.json();
 }
 
@@ -345,17 +351,49 @@ function ensurePolyline(id) {
   return pl;
 }
 
+function parseTail(tail) {
+  if (!Array.isArray(tail)) return [];
+
+  // soporta:
+  // 1) [{lat:"-4.88", lng:"-80.67"}, ...]
+  // 2) [[-4.88, -80.67], ...] o [["-4.88","-80.67"], ...]
+  const out = [];
+  for (const p of tail) {
+    if (p && typeof p === "object" && "lat" in p && "lng" in p) {
+      const la = Number(p.lat);
+      const ln = Number(p.lng);
+      if (Number.isFinite(la) && Number.isFinite(ln)) out.push({ lat: la, lng: ln });
+      continue;
+    }
+    if (Array.isArray(p) && p.length >= 2) {
+      const la = Number(p[0]);
+      const ln = Number(p[1]);
+      if (Number.isFinite(la) && Number.isFinite(ln)) out.push({ lat: la, lng: ln });
+      continue;
+    }
+  }
+  return out;
+}
+
 function updateTruck(id, item) {
-  const pos = new google.maps.LatLng(item.lat, item.lng);
+  const lat = Number(item.lat);
+  const lng = Number(item.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const pos = new google.maps.LatLng(lat, lng);
 
   // HTML marker con nombre + icono
+  const name = item.name || ("Camión " + id);
+  const iconUrl = ICONS[id] || ICONS[305];
+
   if (!htmlMarkers.has(id)) {
-    const hm = new HtmlMarker(pos, map, id, item.name || ("Camión " + id), ICONS[id] || ICONS[305]);
+    const hm = new HtmlMarker(pos, map, id, name, iconUrl);
     htmlMarkers.set(id, hm);
   } else {
     const hm = htmlMarkers.get(id);
     hm.setPosition(pos);
-    hm.setName(item.name || ("Camión " + id));
+    hm.setName(name);
+    hm.setIcon(iconUrl);
   }
 
   // Línea amarilla SOLO dentro del horario definido
@@ -363,7 +401,7 @@ function updateTruck(id, item) {
   const pl = ensurePolyline(id);
 
   if (habilitarLinea && Array.isArray(item.tail) && item.tail.length) {
-    const path = item.tail.map(([la, ln]) => ({ lat: Number(la), lng: Number(ln) }));
+    const path = parseTail(item.tail);
     pl.setPath(path);
     pl.setOptions({ strokeColor: "#FFD400" });
     pl.setMap(map);
@@ -371,35 +409,60 @@ function updateTruck(id, item) {
     // fuera de horario, ocultamos línea (pero camiones se quedan)
     pl.setMap(null);
   }
+
+  return pos;
 }
 
 function setStatus(text) {
   document.getElementById("status-text").textContent = "Estado: " + text;
 }
 
+// Mantener camiones visibles (fit suave y limitar zoom)
+function ensureVisible(positions) {
+  if (!positions.length) return;
+
+  const bounds = new google.maps.LatLngBounds();
+  positions.forEach(p => bounds.extend(p));
+
+  const current = map.getBounds();
+  const anyOut = current ? positions.some(p => !current.contains(p)) : true;
+
+  if (anyOut) {
+    map.fitBounds(bounds, 80); // padding
+    // limita zoom para que no haga super zoom cuando están juntitos
+    google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+      if (map.getZoom() > 17) map.setZoom(17);
+    });
+  }
+}
+
 async function tick() {
   try {
-    const results = await Promise.all(DEVICE_IDS.map(id => fetchDevice(id)));
+    const res = await fetchAll();
 
-    let okAny = false;
-
-    for (const res of results) {
-      if (!res || res.ok !== true) continue;
-
-      // En modo device_id tu worker retorna: { ok:true, time, item }
-      const item = res.item || null;
-
-      if (item && typeof item.lat === "number" && typeof item.lng === "number") {
-        okAny = true;
-        updateTruck(Number(item.id), item);
-      }
+    if (!res || res.ok !== true) {
+      setStatus("sin datos (cookie/IDs/endpoint) ⚠️");
+      return;
     }
 
-    if (okAny) {
+    // Tu worker retorna: { ok:true, time, camion1, camion2, items_count }
+    const items = [];
+    if (res.camion1) items.push(res.camion1);
+    if (res.camion2) items.push(res.camion2);
+
+    const positions = [];
+    for (const item of items) {
+      const id = Number(item.id);
+      const pos = updateTruck(id, item);
+      if (pos) positions.push(pos);
+    }
+
+    if (positions.length) {
+      ensureVisible(positions);
       const horario = dentroDeHorarioRuta() ? " (ruta amarilla ON)" : " (ruta amarilla OFF por horario)";
       setStatus("camiones actualizados ✅" + horario);
     } else {
-      setStatus("sin datos (cookie/IDs/endpoint) ⚠️");
+      setStatus("sin coords válidas (revisa lat/lng) ⚠️");
     }
 
   } catch (e) {
