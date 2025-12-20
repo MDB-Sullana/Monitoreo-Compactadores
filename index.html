@@ -8,10 +8,6 @@
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Leaflet (Mapa PRO) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <!-- EmailJS v4 -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
@@ -20,6 +16,27 @@
 
   <style>
     body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
+
+    /* MAPA */
+    #gmap {
+      width: 100%;
+      height: 80vh;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,.15);
+    }
+
+    /* Overlay cochera (no oculta el mapa) */
+    #cochera-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 50;
+      pointer-events: none; /* deja interactuar el mapa */
+    }
 
     /* BOTÓN FLOTANTE */
     #chatbot-button {
@@ -71,7 +88,6 @@
       font-size: 14px;
       line-height: 1.3;
     }
-
     .bot { background: white; color: black; }
     .user { background: #1e3a8a; color: white; margin-left: auto; }
 
@@ -104,53 +120,14 @@
       0% { opacity: 0; transform: scale(0.95); }
       100% { opacity: 1; transform: scale(1); }
     }
-
-    @keyframes slideUp {
-      0% { opacity: 0; transform: translateY(25px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-
     @keyframes pulse {
       0%, 100% { transform: scale(1); filter: brightness(1); }
       50% { transform: scale(1.06); filter: brightness(1.15); }
     }
-
-    @keyframes slide {
-      0% { transform: translateX(-30px); opacity: 0.3; }
-      50% { transform: translateX(30px); opacity: 1; }
-      100% { transform: translateX(-30px); opacity: 0.3; }
-    }
-
     @keyframes glow {
       0%   { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
       50%  { box-shadow: 0 0 20px 5px rgba(255,255,255,0.35); }
       100% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
-    }
-
-    /* Mapa */
-    #map {
-      height: 80vh;
-      width: 100%;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-
-    /* Etiqueta arriba del camión */
-    .truck-label {
-      background: rgba(15, 23, 42, 0.85);
-      color: white;
-      padding: 4px 8px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-
-    .leaflet-control-layers {
-      border-radius: 12px !important;
-      overflow: hidden;
     }
   </style>
 </head>
@@ -176,68 +153,50 @@
       <span class="text-xs md:text-sm uppercase tracking-wide text-blue-200 font-semibold">
         Municipalidad Distrital de Bellavista
       </span>
-
       <h1 class="text-lg md:text-2xl font-extrabold leading-tight drop-shadow-lg">
         Monitoreo Ciudadano de Camiones Compactadores
       </h1>
-
       <div class="mt-1 h-1 w-24 bg-gradient-to-r from-blue-300 to-white rounded-full"></div>
     </div>
   </div>
 </header>
 
-<main class="p-4 space-y-4">
-  <!-- Barra PRO arriba del mapa -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-    <div class="bg-white rounded-xl shadow p-3 flex items-center gap-3">
-      <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-blue-900 font-black">📡</span>
-      <div>
-        <div class="font-extrabold text-slate-900">En vivo</div>
-        <div id="statusText" class="text-xs text-slate-500">Conectando…</div>
-      </div>
-    </div>
+<!-- CONTENIDO PRINCIPAL -->
+<main class="p-4">
+  <!-- MAPA SIEMPRE PRESENTE (05:00 a 23:59 visible; 00:00 a 04:59 con overlay cochera) -->
+  <div class="relative">
+    <div id="gmap"></div>
 
-    <div class="bg-white rounded-xl shadow p-3 flex items-center gap-2">
-      <span class="text-xs font-bold text-slate-500">Actualiza cada:</span>
-      <span class="text-sm font-extrabold text-slate-900">5s</span>
-      <span class="text-xs text-slate-500">• Satélite + calles por defecto</span>
-    </div>
-  </div>
-
-  <!-- Mapa SIEMPRE visible -->
-  <div id="map" class="shadow-xl"></div>
-
-  <!-- Anuncio cochera (solo 00:00 a 04:59) -->
-  <div id="cochera-banner" class="hidden">
-    <div class="relative w-full p-6">
-      <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 opacity-95 rounded-3xl shadow-2xl"></div>
-
-      <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl
-                  p-8 md:p-10 max-w-5xl w-full mx-auto flex flex-col md:flex-row items-center gap-10
-                  animate-[fadeIn_1s_ease-out]">
-        <div class="flex flex-col items-center">
+    <!-- Overlay cochera -->
+    <div id="cochera-overlay">
+      <div class="w-full max-w-4xl backdrop-blur-xl bg-blue-900/70 border border-white/20 rounded-3xl shadow-2xl p-8 md:p-10 animate-[fadeIn_1s_ease-out]">
+        <div class="flex flex-col md:flex-row items-center gap-8">
           <img
             src="./logo-bellavista.jpeg"
             onerror="this.src='https://placehold.co/200x200/1e3a8a/ffffff?text=LOGO';"
-            class="w-32 h-32 md:w-40 md:h-40 rounded-full shadow-xl object-cover animate-[pulse_3s_infinite] ring-4 ring-white/40"
+            class="w-28 h-28 md:w-36 md:h-36 rounded-full shadow-xl object-cover ring-4 ring-white/40"
           >
-          <div class="mt-3 w-24 h-1 bg-gradient-to-r from-blue-300 to-white rounded-full animate-[slide_2s_infinite]"></div>
+          <div class="text-center md:text-left text-white">
+            <h2 class="text-2xl md:text-3xl font-extrabold leading-tight drop-shadow-lg">
+              UNIDADES EN COCHERA
+              <span class="block text-blue-200">El servicio ha concluido por hoy</span>
+            </h2>
+            <p class="mt-3 text-blue-100 font-medium">
+              El monitoreo en vivo vuelve a las 05:00. Mientras tanto, las unidades permanecen visibles en el mapa.
+            </p>
+            <p class="mt-4 text-xs md:text-sm text-blue-200">
+              Horario del mapa: 05:00 a 23:59. Overlay cochera: 00:00 a 04:59.
+            </p>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <div class="text-center md:text-left animate-[slideUp_1s_ease-out]">
-          <h2 class="text-2xl md:text-3xl font-extrabold mb-3 leading-tight text-white drop-shadow-lg">
-            EN ESTE MOMENTO, LAS UNIDADES ESTÁN EN COCHERA
-            <span class="block text-blue-200">EL MAPA SIGUE MOSTRANDO SU ÚLTIMA UBICACIÓN</span>
-          </h2>
-
-          <p class="text-base md:text-lg mb-2 text-blue-100 font-medium">
-            Gracias por apoyar el monitoreo ciudadano.
-          </p>
-
-          <p class="text-xs md:text-sm text-blue-300 font-light">
-            Horario del mapa: 05:00 a 23:59 • Aviso de cochera: 00:00 a 04:59
-          </p>
-        </div>
+    <!-- Pequeño badge “En vivo” -->
+    <div class="absolute top-3 left-3 z-40">
+      <div class="bg-black/70 text-white text-xs md:text-sm px-3 py-2 rounded-full shadow-lg flex items-center gap-2">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+        <span id="live-status">En vivo</span>
       </div>
     </div>
   </div>
@@ -256,235 +215,31 @@
 </div>
 
 <script>
-  // ==========================
+  // =========================
   // CONFIG
-  // ==========================
+  // =========================
   const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
   const POLL_MS = 5000;
 
-  // Horarios de dibujo de línea amarilla:
-  // 07:00–12:30 y 14:00–22:00
-  function isDrawingWindow(now = new Date()) {
-    const h = now.getHours();
-    const m = now.getMinutes();
-    const mins = h * 60 + m;
-
-    const a1 = 7 * 60;
-    const a2 = 12 * 60 + 30;
-    const b1 = 14 * 60;
-    const b2 = 22 * 60;
-
-    return (mins >= a1 && mins <= a2) || (mins >= b1 && mins <= b2);
-  }
-
-  // Horario para mostrar banner cochera (00:00–04:59)
-  function isCocheraBannerTime(now = new Date()) {
-    const h = now.getHours();
+  // Horarios:
+  // Mapa visible: 05:00 - 23:59
+  // Overlay cochera: 00:00 - 04:59
+  function isCocheraHours() {
+    const h = new Date().getHours();
     return (h >= 0 && h < 5);
   }
 
-  // ==========================
-  // MAPA PRO + CAPAS
-  // ==========================
-  const map = L.map("map", { zoomControl: true });
-
-  // Capas (Satélite + calles con nombres)
-  const esriSat = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { maxZoom: 20, attribution: "Tiles © Esri" }
-  );
-
-  // Labels + nombres (se superpone al satélite)
-  const esriLabels = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    { maxZoom: 20, attribution: "Labels © Esri" }
-  );
-
-  // Calles (modo calles)
-  const osmStreets = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    { maxZoom: 19, attribution: "© OpenStreetMap" }
-  );
-
-  // Claro (alternativo)
-  const cartoLight = L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    { maxZoom: 20, attribution: "© CARTO" }
-  );
-
-  // Grupo: Satélite + Labels
-  const satPlus = L.layerGroup([esriSat, esriLabels]);
-
-  // Default: satélite + calles
-  satPlus.addTo(map);
-
-  // Control de capas (selector)
-  const baseLayers = {
-    "🛰️ Satélite + Calles": satPlus,
-    "🗺️ Calles": osmStreets,
-    "🌤️ Claro": cartoLight
-  };
-  L.control.layers(baseLayers, null, { collapsed: true }).addTo(map);
-
-  // Vista inicial (Bellavista/Sullana aprox; ajusta si quieres)
-  map.setView([-4.885, -80.677], 14);
-
-  // ==========================
-  // ICONO CAMION + NOMBRE ARRIBA
-  // ==========================
-  const truckIcon = L.icon({
-    iconUrl: "./compactador.png",   // sube este archivo al repo
-    iconSize: [44, 44],
-    iconAnchor: [22, 22]
-  });
-
-  function makeNameLabel(name) {
-    return L.divIcon({
-      className: "",
-      html: `<div class="truck-label">${escapeHtml(name || "CAMIÓN")}</div>`,
-      iconSize: null
-    });
+  function configurarVista() {
+    const overlay = document.getElementById("cochera-overlay");
+    overlay.style.display = isCocheraHours() ? "flex" : "none";
   }
 
-  function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, s => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[s]));
-  }
+  window.addEventListener("load", configurarVista);
+  setInterval(configurarVista, 30_000);
 
-  // ==========================
-  // ESTADO CAMIONES
-  // ==========================
-  const trucks = {
-    camion1: { id: 305, name: "COMPACTADOR", marker: null, label: null, poly: null, lastLatLng: null, points: [] },
-    camion2: { id: 809, name: "COMPACTADOR 2", marker: null, label: null, poly: null, lastLatLng: null, points: [] }
-  };
-
-  function upsertTruck(key, item, allowDrawLine) {
-    const t = trucks[key];
-    if (!t || !item || item.lat == null || item.lng == null) return;
-
-    const lat = Number(item.lat);
-    const lng = Number(item.lng);
-    if (!isFinite(lat) || !isFinite(lng)) return;
-
-    const latlng = L.latLng(lat, lng);
-
-    // Marker (camión)
-    if (!t.marker) {
-      t.marker = L.marker(latlng, { icon: truckIcon }).addTo(map);
-    } else {
-      t.marker.setLatLng(latlng);
-    }
-
-    // Label arriba
-    const displayName = item.name || t.name;
-    if (!t.label) {
-      t.label = L.marker(latlng, { icon: makeNameLabel(displayName), interactive: false }).addTo(map);
-    } else {
-      t.label.setLatLng(latlng);
-      t.label.setIcon(makeNameLabel(displayName));
-    }
-
-    // Auto-centrar solo al primer fix de cada camión
-    if (!t.lastLatLng) {
-      map.panTo(latlng, { animate: true });
-    }
-
-    // LINEA AMARILLA (EN VIVO)
-    // Si GPSEyes trae tail, lo usamos como base. Luego agregamos el punto actual.
-    // Solo se va extendiendo durante ventanas de dibujo.
-    if (allowDrawLine) {
-      // Construir puntos desde tail si existe
-      const tail = Array.isArray(item.tail) ? item.tail : [];
-      // tail puede venir como [[lat,lng], ...] o como objetos {lat,lng}
-      let tailPoints = [];
-      if (tail.length && Array.isArray(tail[0])) {
-        tailPoints = tail.map(p => [Number(p[0]), Number(p[1])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
-      } else if (tail.length && typeof tail[0] === "object") {
-        tailPoints = tail.map(p => [Number(p.lat), Number(p.lng)]).filter(p => isFinite(p[0]) && isFinite(p[1]));
-      }
-
-      // Mantener un buffer local también (más suave)
-      // Añadimos el punto actual si cambió
-      const last = t.points[t.points.length - 1];
-      if (!last || Math.abs(last[0] - lat) > 0.00001 || Math.abs(last[1] - lng) > 0.00001) {
-        t.points.push([lat, lng]);
-      }
-
-      // Unimos: tail (si existe) + puntos locales (para continuidad)
-      let merged = tailPoints.length ? tailPoints.slice() : [];
-      for (const p of t.points) merged.push(p);
-
-      // Limitar tamaño para no pesar (últimos ~800 puntos)
-      if (merged.length > 800) merged = merged.slice(merged.length - 800);
-
-      if (!t.poly) {
-        t.poly = L.polyline(merged, { color: "#FFD400", weight: 5, opacity: 0.95 }).addTo(map);
-      } else {
-        t.poly.setLatLngs(merged);
-      }
-    }
-
-    t.lastLatLng = latlng;
-  }
-
-  function setStatus(text, ok=true) {
-    const el = document.getElementById("statusText");
-    if (!el) return;
-    el.textContent = text;
-    el.className = ok ? "text-xs text-slate-500" : "text-xs text-red-600 font-bold";
-  }
-
-  // ==========================
-  // EN VIVO (AUTO)
-  // ==========================
-  async function pollLive() {
-    try {
-      // cache-bust
-      const url = WORKER_URL + "?_=" + Date.now();
-      const res = await fetch(url, { cache: "no-store" });
-      const data = await res.json();
-
-      // Si tu worker devuelve {ok:true, camion1, camion2, time}
-      const c1 = data.camion1 || null;
-      const c2 = data.camion2 || null;
-
-      const draw = isDrawingWindow(new Date()); // solo en tus horarios de ruta
-
-      // Actualizamos camiones SIEMPRE (incluso cochera)
-      upsertTruck("camion1", c1, draw);
-      upsertTruck("camion2", c2, draw);
-
-      // Status
-      const tm = data.time ? `• GPSEyes time: ${data.time}` : "";
-      setStatus(draw ? ("En vivo + dibujo de ruta activo " + tm) : ("En vivo (sin dibujar ruta fuera de horario) " + tm), true);
-    } catch (e) {
-      console.error(e);
-      setStatus("No se pudo conectar al servidor en vivo (Worker).", false);
-    }
-  }
-
-  // Banner cochera por hora (pero el mapa sigue)
-  function refreshCocheraBanner() {
-    const banner = document.getElementById("cochera-banner");
-    if (!banner) return;
-
-    if (isCocheraBannerTime(new Date())) banner.classList.remove("hidden");
-    else banner.classList.add("hidden");
-  }
-
-  // Auto-start
-  window.addEventListener("load", () => {
-    refreshCocheraBanner();
-    pollLive();
-    setInterval(pollLive, POLL_MS);
-    setInterval(refreshCocheraBanner, 30000);
-  });
-
-  // ==========================
-  // CHATBOT (tu código intacto)
-  // ==========================
+  // =========================
+  // CHATBOT (tu código igual)
+  // =========================
   const botBtn = document.getElementById("chatbot-button");
   const botWindow = document.getElementById("chatbot-window");
   const messages = document.getElementById("chatbot-messages");
@@ -536,13 +291,11 @@
       data.name = text;
       step = 1;
       setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
-    }
-    else if (step === 1) {
+    } else if (step === 1) {
       data.direccion = text;
       step = 2;
       setTimeout(() => botSay("Por favor describe la incidencia."), 500);
-    }
-    else if (step === 2) {
+    } else if (step === 2) {
       data.incidencia = text;
       step = 3;
       sendReport();
@@ -562,6 +315,193 @@
     .then(() => botSay("✔️ ¡Tu reporte fue enviado por correo!"))
     .catch(() => botSay("❌ Hubo un problema al enviar el correo."));
   }
+
+  // =========================
+  // GOOGLE MAPS + RUTA AMARILLA EN VIVO
+  // =========================
+  let map;
+
+  // Estado por camión
+  const trucks = {
+    305: { name: "COMPACTADOR", marker: null, label: null, poly: null, path: [] },
+    809: { name: "COMPACTADOR 2", marker: null, label: null, poly: null, path: [] }
+  };
+
+  // Íconos (pon tus PNG en el repo con estos nombres)
+  const ICONS = {
+    305: { url: "./compactador.png", scaledSize: null },
+    809: { url: "./compactador2.png", scaledSize: null }
+  };
+
+  function buildMarkerIcon(id) {
+    // Ajusta tamaño a gusto
+    return {
+      url: ICONS[id]?.url || "./compactador.png",
+      scaledSize: new google.maps.Size(42, 42),
+      anchor: new google.maps.Point(21, 21)
+    };
+  }
+
+  function ensurePolyline(id) {
+    const t = trucks[id];
+    if (!t.poly) {
+      t.poly = new google.maps.Polyline({
+        path: [],
+        geodesic: true,
+        strokeColor: "#FFD400",  // amarillo
+        strokeOpacity: 0.95,
+        strokeWeight: 5,
+        map
+      });
+    }
+    return t.poly;
+  }
+
+  function upsertTruckFromItem(item) {
+    const id = Number(item.id);
+    const t = trucks[id];
+    if (!t) return;
+
+    const pos = { lat: Number(item.lat), lng: Number(item.lng) };
+    if (Number.isNaN(pos.lat) || Number.isNaN(pos.lng)) return;
+
+    // Marker
+    if (!t.marker) {
+      t.marker = new google.maps.Marker({
+        position: pos,
+        map,
+        icon: buildMarkerIcon(id),
+        title: t.name,
+      });
+
+      // Label encima
+      t.label = new google.maps.InfoWindow({
+        content: `<div style="font-weight:700;font-size:12px;color:#111;background:#fff;padding:4px 8px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.15)">${t.name}</div>`,
+        disableAutoPan: true
+      });
+      t.label.open({ map, anchor: t.marker, shouldFocus: false });
+
+    } else {
+      t.marker.setPosition(pos);
+      if (t.label) t.label.open({ map, anchor: t.marker, shouldFocus: false });
+    }
+
+    // Ruta: usamos tail si viene, si no, acumulamos punto a punto
+    let newPath = [];
+
+    if (Array.isArray(item.tail) && item.tail.length) {
+      // tail puede venir como [[lat,lng], ...] o como objetos; soportamos ambos
+      if (Array.isArray(item.tail[0])) {
+        newPath = item.tail.map(p => ({ lat: Number(p[0]), lng: Number(p[1]) })).filter(p => !Number.isNaN(p.lat) && !Number.isNaN(p.lng));
+      } else {
+        newPath = item.tail.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })).filter(p => !Number.isNaN(p.lat) && !Number.isNaN(p.lng));
+      }
+
+      // Asegura que el último sea la posición actual
+      if (!newPath.length || newPath[newPath.length-1].lat !== pos.lat || newPath[newPath.length-1].lng !== pos.lng) {
+        newPath.push(pos);
+      }
+
+      t.path = newPath;
+    } else {
+      // fallback: acumular por polling
+      const last = t.path[t.path.length - 1];
+      if (!last || Math.abs(last.lat - pos.lat) > 0.00001 || Math.abs(last.lng - pos.lng) > 0.00001) {
+        t.path.push(pos);
+      }
+    }
+
+    // Pintar polilínea amarilla
+    const poly = ensurePolyline(id);
+    poly.setPath(t.path);
+  }
+
+  async function pollLive() {
+    try {
+      const res = await fetch(WORKER_URL, { cache: "no-store" });
+      const data = await res.json();
+
+      // Tu worker devuelve camion1/camion2 como objetos “item”
+      if (data && data.ok) {
+        const items = [];
+        if (data.camion1) items.push(data.camion1);
+        if (data.camion2) items.push(data.camion2);
+
+        // A veces GPSEyes manda solo 1 item; igual funciona
+        items.forEach(upsertTruckFromItem);
+
+        document.getElementById("live-status").textContent = "En vivo";
+      } else {
+        document.getElementById("live-status").textContent = "Sin datos";
+      }
+    } catch (e) {
+      document.getElementById("live-status").textContent = "Error";
+      console.error(e);
+    }
+  }
+
+  // Selector de capas (roadmap / satellite / hybrid / terrain)
+  function addMapTypeControl() {
+    const controlDiv = document.createElement("div");
+    controlDiv.style.margin = "12px";
+    controlDiv.style.background = "rgba(0,0,0,.70)";
+    controlDiv.style.borderRadius = "999px";
+    controlDiv.style.padding = "8px";
+    controlDiv.style.display = "flex";
+    controlDiv.style.gap = "6px";
+    controlDiv.style.boxShadow = "0 10px 25px rgba(0,0,0,.25)";
+
+    const types = [
+      { id: "hybrid", label: "Satélite (Calles)" },   // ✅ lo que quieres por defecto
+      { id: "roadmap", label: "Mapa" },
+      { id: "satellite", label: "Satélite" },
+      { id: "terrain", label: "Relieve" }
+    ];
+
+    types.forEach(t => {
+      const btn = document.createElement("button");
+      btn.textContent = t.label;
+      btn.style.color = "white";
+      btn.style.fontSize = "12px";
+      btn.style.fontWeight = "700";
+      btn.style.padding = "8px 12px";
+      btn.style.borderRadius = "999px";
+      btn.style.border = "1px solid rgba(255,255,255,.25)";
+      btn.style.background = "rgba(255,255,255,.08)";
+      btn.style.cursor = "pointer";
+      btn.onclick = () => map.setMapTypeId(t.id);
+      controlDiv.appendChild(btn);
+    });
+
+    map.controls[google.maps.ControlPosition.TOP_RIGHT].push(controlDiv);
+  }
+
+  // Google llama esto automáticamente cuando carga el script
+  window.initMap = function initMap() {
+    // Centro inicial (Bellavista/Sullana aprox; ajústalo si quieres)
+    const center = { lat: -4.8844, lng: -80.6778 };
+
+    map = new google.maps.Map(document.getElementById("gmap"), {
+      center,
+      zoom: 14,
+      mapTypeId: "hybrid",        // ✅ satélite + nombres de calles
+      streetViewControl: false,
+      fullscreenControl: true,
+      mapTypeControl: false,      // usamos control custom
+      clickableIcons: false
+    });
+
+    addMapTypeControl();
+
+    // ✅ “En vivo” arranca automático
+    pollLive();
+    setInterval(pollLive, POLL_MS);
+  };
+</script>
+
+<!-- GOOGLE MAPS (pega tu API KEY) -->
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&callback=initMap">
 </script>
 
 </body>
