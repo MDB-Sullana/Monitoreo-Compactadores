@@ -178,6 +178,7 @@
    CONFIG
 ========================= */
 const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
+const DEVICE_IDS = [305, 809]; // por si tu worker soporta ?device_id=
 const POLL_MS = 8000; // cada 8s
 
 // Iconos (deben existir en tu repo)
@@ -271,14 +272,6 @@ class HtmlMarker extends google.maps.OverlayView {
       if (label) label.textContent = name;
     }
   }
-
-  setIcon(iconUrl) {
-    this.iconUrl = iconUrl;
-    if (this.div) {
-      const img = this.div.querySelector(".truck-img");
-      if (img) img.src = iconUrl;
-    }
-  }
 }
 
 const htmlMarkers = new Map(); // id -> HtmlMarker
@@ -290,9 +283,9 @@ function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center,
     zoom: 15,
-    mapTypeId: "hybrid", // satélite + nombres de calles
+    mapTypeId: "hybrid",
     streetViewControl: false,
-    mapTypeControl: true, // selector capas
+    mapTypeControl: true,
     fullscreenControl: true,
     gestureHandling: "greedy"
   });
@@ -328,14 +321,47 @@ function startLive() {
 }
 
 /* =========================
-   FETCH + DIBUJO
+   FETCH + NORMALIZACIÓN
 ========================= */
-async function fetchAll() {
-  const url = WORKER_URL + "?_=" + Date.now();
+
+// Soporta tu endpoint en 2 modos:
+// 1) ?device_id=305 (retorna item)
+// 2) sin device_id (retorna camion1/camion2)
+async function fetchWorker(deviceIdOrNull) {
+  const url =
+    WORKER_URL +
+    (deviceIdOrNull ? ("?device_id=" + encodeURIComponent(deviceIdOrNull)) : "") +
+    (WORKER_URL.includes("?") || deviceIdOrNull ? "&" : "?") +
+    "_=" + Date.now();
+
   const r = await fetch(url, { cache: "no-store" });
   return await r.json();
 }
 
+function toNum(v) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Convierte cualquier respuesta del worker en una lista de "items" (camiones)
+function normalizeToItems(res) {
+  if (!res || res.ok !== true) return [];
+
+  // Caso A: worker devuelve { item: {...} }
+  if (res.item && (res.item.lat != null) && (res.item.lng != null)) {
+    return [res.item];
+  }
+
+  // Caso B: worker devuelve { camion1: {...}, camion2: {...} }
+  const items = [];
+  if (res.camion1) items.push(res.camion1);
+  if (res.camion2) items.push(res.camion2);
+  return items;
+}
+
+/* =========================
+   DIBUJO
+========================= */
 function ensurePolyline(id) {
   if (polylines.has(id)) return polylines.get(id);
 
@@ -344,56 +370,28 @@ function ensurePolyline(id) {
     geodesic: true,
     strokeOpacity: 0.95,
     strokeWeight: 5,
-    strokeColor: "#FFD400" // AMARILLO
+    strokeColor: "#FFD400"
   });
   pl.setMap(map);
   polylines.set(id, pl);
   return pl;
 }
 
-function parseTail(tail) {
-  if (!Array.isArray(tail)) return [];
-
-  // soporta:
-  // 1) [{lat:"-4.88", lng:"-80.67"}, ...]
-  // 2) [[-4.88, -80.67], ...] o [["-4.88","-80.67"], ...]
-  const out = [];
-  for (const p of tail) {
-    if (p && typeof p === "object" && "lat" in p && "lng" in p) {
-      const la = Number(p.lat);
-      const ln = Number(p.lng);
-      if (Number.isFinite(la) && Number.isFinite(ln)) out.push({ lat: la, lng: ln });
-      continue;
-    }
-    if (Array.isArray(p) && p.length >= 2) {
-      const la = Number(p[0]);
-      const ln = Number(p[1]);
-      if (Number.isFinite(la) && Number.isFinite(ln)) out.push({ lat: la, lng: ln });
-      continue;
-    }
-  }
-  return out;
-}
-
 function updateTruck(id, item) {
-  const lat = Number(item.lat);
-  const lng = Number(item.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const lat = toNum(item.lat);
+  const lng = toNum(item.lng);
+  if (lat == null || lng == null) return false;
 
   const pos = new google.maps.LatLng(lat, lng);
 
   // HTML marker con nombre + icono
-  const name = item.name || ("Camión " + id);
-  const iconUrl = ICONS[id] || ICONS[305];
-
   if (!htmlMarkers.has(id)) {
-    const hm = new HtmlMarker(pos, map, id, name, iconUrl);
+    const hm = new HtmlMarker(pos, map, id, item.name || ("Camión " + id), ICONS[id] || ICONS[305]);
     htmlMarkers.set(id, hm);
   } else {
     const hm = htmlMarkers.get(id);
     hm.setPosition(pos);
-    hm.setName(name);
-    hm.setIcon(iconUrl);
+    hm.setName(item.name || ("Camión " + id));
   }
 
   // Línea amarilla SOLO dentro del horario definido
@@ -401,64 +399,60 @@ function updateTruck(id, item) {
   const pl = ensurePolyline(id);
 
   if (habilitarLinea && Array.isArray(item.tail) && item.tail.length) {
-    const path = parseTail(item.tail);
-    pl.setPath(path);
-    pl.setOptions({ strokeColor: "#FFD400" });
-    pl.setMap(map);
+    // TU CASO REAL: tail = [{lat:"..", lng:".."}, ...]
+    const path = item.tail
+      .map(p => {
+        const la = toNum(p.lat);
+        const ln = toNum(p.lng);
+        if (la == null || ln == null) return null;
+        return { lat: la, lng: ln };
+      })
+      .filter(Boolean);
+
+    if (path.length) {
+      pl.setPath(path);
+      pl.setOptions({ strokeColor: "#FFD400" });
+      pl.setMap(map);
+    } else {
+      pl.setMap(null);
+    }
   } else {
     // fuera de horario, ocultamos línea (pero camiones se quedan)
     pl.setMap(null);
   }
 
-  return pos;
+  return true;
 }
 
 function setStatus(text) {
   document.getElementById("status-text").textContent = "Estado: " + text;
 }
 
-// Mantener camiones visibles (fit suave y limitar zoom)
-function ensureVisible(positions) {
-  if (!positions.length) return;
-
-  const bounds = new google.maps.LatLngBounds();
-  positions.forEach(p => bounds.extend(p));
-
-  const current = map.getBounds();
-  const anyOut = current ? positions.some(p => !current.contains(p)) : true;
-
-  if (anyOut) {
-    map.fitBounds(bounds, 80); // padding
-    // limita zoom para que no haga super zoom cuando están juntitos
-    google.maps.event.addListenerOnce(map, "bounds_changed", () => {
-      if (map.getZoom() > 17) map.setZoom(17);
-    });
-  }
-}
-
 async function tick() {
   try {
-    const res = await fetchAll();
+    // Primero intentamos modo "global" (camion1/camion2) - tu respuesta actual
+    let resGlobal = null;
+    try {
+      resGlobal = await fetchWorker(null);
+    } catch (_) {}
 
-    if (!res || res.ok !== true) {
-      setStatus("sin datos (cookie/IDs/endpoint) ⚠️");
-      return;
+    let items = normalizeToItems(resGlobal);
+
+    // Si no vino nada, intentamos modo por device_id (por si lo usas también)
+    if (!items.length) {
+      const results = await Promise.all(DEVICE_IDS.map(id => fetchWorker(id)));
+      items = results.flatMap(r => normalizeToItems(r));
     }
 
-    // Tu worker retorna: { ok:true, time, camion1, camion2, items_count }
-    const items = [];
-    if (res.camion1) items.push(res.camion1);
-    if (res.camion2) items.push(res.camion2);
-
-    const positions = [];
+    let okAny = false;
     for (const item of items) {
-      const id = Number(item.id);
-      const pos = updateTruck(id, item);
-      if (pos) positions.push(pos);
+      const id = Number(item.id) || 0;
+      if (!id) continue;
+      const ok = updateTruck(id, item);
+      if (ok) okAny = true;
     }
 
-    if (positions.length) {
-      ensureVisible(positions);
+    if (okAny) {
       const horario = dentroDeHorarioRuta() ? " (ruta amarilla ON)" : " (ruta amarilla OFF por horario)";
       setStatus("camiones actualizados ✅" + horario);
     } else {
