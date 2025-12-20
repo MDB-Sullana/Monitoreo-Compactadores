@@ -2,488 +2,140 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monitoreo Ciudadano - Bellavista</title>
+  <title>Monitoreo Ciudadano - Compactadores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Tailwind -->
+  <!-- Tailwind (solo para estilos generales) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- EmailJS v4 -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>
-    emailjs.init({ publicKey: "IGGKWnrPTdwnN39yS" });
-  </script>
-
   <style>
-    body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
-
-    /* BOTÓN FLOTANTE */
-    #chatbot-button{
-      position:fixed; bottom:25px; right:25px; background:#1e3a8a; color:white;
-      width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-      font-size:28px; cursor:pointer; box-shadow:0 6px 15px rgba(0,0,0,0.3); z-index:9999;
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
     }
 
-    /* VENTANA DEL CHAT */
-    #chatbot-window{
-      width:330px; height:480px; background:white; position:fixed; bottom:100px; right:25px;
-      border-radius:15px; box-shadow:0 0 20px rgba(0,0,0,0.25);
-      display:none; flex-direction:column; overflow:hidden; z-index:9999;
+    #map {
+      width: 100%;
+      height: 90vh;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.25);
     }
 
-    #chatbot-messages{ flex:1; padding:10px; overflow-y:auto; background:#e5e7eb; }
-
-    .msg{ margin-bottom:10px; padding:10px 14px; max-width:80%; border-radius:12px; font-size:14px; line-height:1.3; }
-    .bot{ background:white; color:black; }
-    .user{ background:#1e3a8a; color:white; margin-left:auto; }
-
-    /* INPUT */
-    #chat-input-box{ display:flex; padding:8px; border-top:1px solid #ddd; background:white; }
-    #user-input{ flex:1; padding:8px; border:1px solid #ccc; border-radius:8px; }
-    #send-btn{ margin-left:6px; background:#1e3a8a; color:white; padding:8px 14px; border-radius:8px; cursor:pointer; }
-
-    /* Header anim */
-    @keyframes pulse{ 0%,100%{transform:scale(1);filter:brightness(1);} 50%{transform:scale(1.06);filter:brightness(1.15);} }
-    @keyframes glow{ 0%{box-shadow:0 0 0px 0px rgba(255,255,255,0);} 50%{box-shadow:0 0 20px 5px rgba(255,255,255,.35);} 100%{box-shadow:0 0 0px 0px rgba(255,255,255,0);} }
-
-    /* MAPA */
-    #map{
-      width:100%;
-      height:80vh;
-      border-radius:16px;
-      overflow:hidden;
-    }
-
-    /* Etiquetas de nombre (Google Maps Overlay) */
-    .truck-label{
-      background: rgba(0,0,0,0.70);
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 999px;
+    .camion-label {
+      background: rgba(255,255,255,0.95);
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid #333;
       font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-      transform: translate(-50%, -120%);
-      box-shadow: 0 6px 16px rgba(0,0,0,.25);
-      border: 1px solid rgba(255,255,255,.15);
+      font-weight: bold;
+      color: #000;
     }
-
-    /* Botón “En vivo” */
-    .live-pill{
-      position:absolute;
-      top:14px;
-      left:14px;
-      z-index:10;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      background:rgba(255,255,255,.92);
-      backdrop-filter: blur(10px);
-      border:1px solid rgba(0,0,0,.08);
-      border-radius:999px;
-      padding:10px 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,.15);
-      user-select:none;
-    }
-    .live-dot{
-      width:10px; height:10px; border-radius:999px; background:#22c55e;
-      box-shadow:0 0 0 0 rgba(34,197,94,.7);
-      animation: pulseDot 1.5s infinite;
-    }
-    @keyframes pulseDot{
-      0%{box-shadow:0 0 0 0 rgba(34,197,94,.7)}
-      70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}
-      100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
-    }
-    .live-btn{
-      background:#1e3a8a; color:white; font-weight:700;
-      padding:8px 12px; border-radius:999px; cursor:pointer;
-    }
-    .live-btn.off{ background:#6b7280; }
   </style>
 </head>
 
-<body>
+<body class="bg-gray-100">
 
-<!-- HEADER PRO -->
-<header class="relative shadow-xl py-3 px-4 flex items-center justify-center">
-  <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 opacity-95"></div>
+  <!-- HEADER -->
+  <header class="bg-blue-900 text-white p-4 shadow-lg">
+    <h1 class="text-xl md:text-2xl font-extrabold text-center">
+      Monitoreo Ciudadano de Camiones Compactadores
+    </h1>
+    <p class="text-center text-blue-200 text-sm">
+      Municipalidad Distrital de Bellavista – Sullana
+    </p>
+  </header>
 
-  <div class="relative z-10 flex items-center gap-4 select-none">
-    <div class="relative">
-      <img
-        src="./logo-bellavista.jpeg"
-        onerror="this.src='https://placehold.co/100x100/1e3a8a/ffffff?text=LOGO'"
-        class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl ring-2 ring-white/40"
-        style="animation:pulse 4s ease-in-out infinite;"
-      >
-      <div class="absolute inset-0 rounded-full" style="animation:glow 3s infinite;"></div>
-    </div>
+  <!-- MAPA -->
+  <main class="p-3">
+    <div id="map"></div>
+  </main>
 
-    <div class="flex flex-col justify-center text-white">
-      <span class="text-xs md:text-sm uppercase tracking-wide text-blue-200 font-semibold">
-        Municipalidad Distrital de Bellavista
-      </span>
-      <h1 class="text-lg md:text-2xl font-extrabold leading-tight drop-shadow-lg">
-        Monitoreo Ciudadano de Camiones Compactadores
-      </h1>
-      <div class="mt-1 h-1 w-24 bg-gradient-to-r from-blue-300 to-white rounded-full"></div>
-    </div>
-  </div>
-</header>
+  <!-- GOOGLE MAPS -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&callback=initMap"
+    async
+    defer>
+  </script>
 
-<!-- CONTENIDO PRINCIPAL -->
-<main class="p-4">
-  <div class="relative">
-    <!-- Control “En vivo” (arranca automático) -->
-    <div class="live-pill">
-      <div class="live-dot" id="liveDot"></div>
-      <div class="text-sm font-extrabold text-slate-900">EN VIVO</div>
-      <button id="liveToggle" class="live-btn">Activo</button>
-      <div id="liveStatus" class="text-xs font-semibold text-slate-700"></div>
-    </div>
+  <script>
+    let map;
+    let markers = {};
+    let polylines = {};
 
-    <!-- MAPA -->
-    <div id="map" class="w-full shadow-xl"></div>
-  </div>
+    const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/";
 
-  <p class="mt-3 text-xs md:text-sm text-slate-600">
-    *El mapa se actualiza automáticamente. Si una unidad no reporta, se muestra su última posición conocida.
-  </p>
-</main>
-
-<!-- BOTÓN FLOTANTE -->
-<div id="chatbot-button">💬</div>
-
-<!-- CHATBOT -->
-<div id="chatbot-window">
-  <div id="chatbot-messages"></div>
-  <div id="chat-input-box">
-    <input type="text" id="user-input" placeholder="Escribe aquí...">
-    <button id="send-btn">Enviar</button>
-  </div>
-</div>
-
-<script>
-  /***********************
-   *  CONFIG
-   ***********************/
-  const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/";
-  const POLL_MS = 5000;
-
-  // Íconos de camión (puedes reemplazar por tus PNG)
-  // Recomendado: sube 2 imágenes al repo, ej:
-  // /assets/truck1.png y /assets/truck2.png
-  const TRUCK_ICON_1 = "https://cdn-icons-png.flaticon.com/512/1995/1995470.png";
-  const TRUCK_ICON_2 = "https://cdn-icons-png.flaticon.com/512/1995/1995470.png";
-
-  // Centro inicial del mapa (Bellavista/Sullana aprox) - ajustable
-  const DEFAULT_CENTER = { lat: -4.8844, lng: -80.6778 };
-  const DEFAULT_ZOOM = 14;
-
-  /***********************
-   *  CHATBOT (tu código)
-   ***********************/
-  const botBtn = document.getElementById("chatbot-button");
-  const botWindow = document.getElementById("chatbot-window");
-  const messages = document.getElementById("chatbot-messages");
-  const input = document.getElementById("user-input");
-  const sendBtn = document.getElementById("send-btn");
-
-  let step = 0;
-  let data = { name: "", direccion: "", incidencia: "" };
-
-  function botSay(text) {
-    const div = document.createElement("div");
-    div.className = "msg bot";
-    div.innerHTML = text;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-  }
-  function userSay(text) {
-    const div = document.createElement("div");
-    div.className = "msg user";
-    div.innerHTML = text;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-  }
-  botBtn.onclick = () => {
-    botWindow.style.display = (botWindow.style.display === "flex" ? "none" : "flex");
-    if (messages.innerHTML.trim() === "") startChat();
-  };
-  function startChat() {
-    step = 0;
-    botSay("👋 Hola vecino, gracias por apoyar el monitoreo ciudadano.");
-    setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
-  }
-  sendBtn.onclick = () => processUserMessage();
-  input.addEventListener("keypress", (e) => { if (e.key === "Enter") processUserMessage(); });
-
-  function processUserMessage() {
-    const text = input.value.trim();
-    if (!text) return;
-    userSay(text);
-    input.value = "";
-
-    if (step === 0) {
-      data.name = text;
-      step = 1;
-      setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
-    } else if (step === 1) {
-      data.direccion = text;
-      step = 2;
-      setTimeout(() => botSay("Por favor describe la incidencia."), 500);
-    } else if (step === 2) {
-      data.incidencia = text;
-      step = 3;
-      sendReport();
-    }
-  }
-
-  function sendReport() {
-    botSay("⏳ Enviando reporte, por favor espera...");
-
-    const msg = "Dirección: " + data.direccion + "\n" + "Incidencia: " + data.incidencia;
-
-    emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-      name: data.name,
-      time: new Date().toLocaleString(),
-      message: msg
-    })
-    .then(() => botSay("✔️ ¡Tu reporte fue enviado por correo!"))
-    .catch(() => botSay("❌ Hubo un problema al enviar el correo."));
-  }
-
-  /***********************
-   *  GOOGLE MAPS + RUTA
-   ***********************/
-  let map;
-  let liveEnabled = true;
-  let timer = null;
-
-  // Cache para que “se vean siempre”
-  const state = {
-    camion1: { last: null, marker: null, label: null, poly: null, path: [] },
-    camion2: { last: null, marker: null, label: null, poly: null, path: [] }
-  };
-
-  // Overlay para etiquetas
-  class LabelOverlay extends google.maps.OverlayView {
-    constructor(position, text) {
-      super();
-      this.position = position;
-      this.text = text;
-      this.div = null;
-    }
-    onAdd() {
-      this.div = document.createElement("div");
-      this.div.className = "truck-label";
-      this.div.innerText = this.text;
-      const panes = this.getPanes();
-      panes.floatPane.appendChild(this.div);
-    }
-    draw() {
-      if (!this.div) return;
-      const proj = this.getProjection();
-      const pos = proj.fromLatLngToDivPixel(this.position);
-      this.div.style.left = pos.x + "px";
-      this.div.style.top = pos.y + "px";
-      this.div.style.position = "absolute";
-    }
-    onRemove() {
-      if (this.div) this.div.remove();
-      this.div = null;
-    }
-    setPosition(latLng) {
-      this.position = latLng;
-      this.draw();
-    }
-    setText(t) {
-      this.text = t;
-      if (this.div) this.div.innerText = t;
-    }
-  }
-
-  function initMap() {
-    // Mapa PRO: HYBRID = satélite + nombres de calles
-    map = new google.maps.Map(document.getElementById("map"), {
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      mapTypeId: google.maps.MapTypeId.HYBRID,
-      mapTypeControl: true,           // selector de capas
-      mapTypeControlOptions: {
-        style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-        position: google.maps.ControlPosition.TOP_RIGHT
-      },
-      fullscreenControl: true,
-      streetViewControl: false
-    });
-
-    // Arranque automático “En vivo”
-    document.getElementById("liveToggle").addEventListener("click", () => {
-      liveEnabled = !liveEnabled;
-      updateLiveUI();
-      if (liveEnabled) startPolling();
-      else stopPolling();
-    });
-
-    updateLiveUI();
-    startPolling();
-  }
-
-  function updateLiveUI() {
-    const btn = document.getElementById("liveToggle");
-    const dot = document.getElementById("liveDot");
-    const st = document.getElementById("liveStatus");
-
-    if (liveEnabled) {
-      btn.classList.remove("off");
-      btn.textContent = "Activo";
-      dot.style.background = "#22c55e";
-      st.textContent = "Actualizando cada " + (POLL_MS/1000) + "s";
-    } else {
-      btn.classList.add("off");
-      btn.textContent = "Pausado";
-      dot.style.background = "#9ca3af";
-      st.textContent = "Actualización detenida";
-    }
-  }
-
-  function startPolling() {
-    stopPolling();
-    fetchAndRender();                // inmediato
-    timer = setInterval(fetchAndRender, POLL_MS);
-  }
-
-  function stopPolling() {
-    if (timer) clearInterval(timer);
-    timer = null;
-  }
-
-  function ensureTruckObjects(key, name, iconUrl) {
-    const s = state[key];
-
-    if (!s.marker) {
-      s.marker = new google.maps.Marker({
-        map,
-        position: DEFAULT_CENTER,
-        title: name,
-        icon: {
-          url: iconUrl,
-          scaledSize: new google.maps.Size(44, 44)
-        },
-        zIndex: 999
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: -4.8845, lng: -80.6779 },
+        zoom: 15,
+        mapTypeId: "hybrid", // satélite + nombres de calles
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true
       });
+
+      cargarCamiones();
+      setInterval(cargarCamiones, 15000); // cada 15 segundos
     }
 
-    if (!s.label) {
-      s.label = new LabelOverlay(new google.maps.LatLng(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng), name);
-      s.label.setMap(map);
-    }
+    async function cargarCamiones() {
+      try {
+        const res = await fetch(WORKER_URL);
+        const data = await res.json();
 
-    if (!s.poly) {
-      s.poly = new google.maps.Polyline({
-        map,
-        path: [],
-        strokeColor: "#FFD400", // Amarillo
-        strokeOpacity: 0.95,
-        strokeWeight: 5
-      });
-    }
-  }
+        if (!data.ok) return;
 
-  function setTruckPosition(key, name, iconUrl, lat, lng) {
-    ensureTruckObjects(key, name, iconUrl);
+        const camiones = [data.camion1, data.camion2];
 
-    const s = state[key];
-    const pos = new google.maps.LatLng(lat, lng);
+        camiones.forEach(camion => {
+          if (!camion || !camion.lat || !camion.lng) return;
 
-    // marker + label
-    s.marker.setPosition(pos);
-    s.label.setPosition(pos);
+          const pos = { lat: camion.lat, lng: camion.lng };
 
-    // path: agrega punto
-    const last = s.path[s.path.length - 1];
-    if (!last || Math.abs(last.lat - lat) > 0.00001 || Math.abs(last.lng - lng) > 0.00001) {
-      s.path.push({ lat, lng });
-      s.poly.setPath(s.path);
-    }
+          // ===== MARKER =====
+          if (!markers[camion.id]) {
+            markers[camion.id] = new google.maps.Marker({
+              position: pos,
+              map,
+              icon: {
+                url: "./Compactador.jpeg",
+                scaledSize: new google.maps.Size(48, 48),
+                anchor: new google.maps.Point(24, 24)
+              },
+              label: {
+                text: camion.name,
+                className: "camion-label"
+              }
+            });
+          } else {
+            markers[camion.id].setPosition(pos);
+          }
 
-    s.last = { lat, lng, ts: Date.now() };
-  }
+          // ===== POLYLINE (RUTA) =====
+          if (Array.isArray(camion.tail) && camion.tail.length > 1) {
+            const path = camion.tail.map(p => ({ lat: p[0], lng: p[1] }));
 
-  function hydrateFromTail(key, tail) {
-    // tail puede venir como [[lat,lng],...] o como objetos {lat,lng}
-    if (!Array.isArray(tail) || tail.length === 0) return;
-    const s = state[key];
+            if (!polylines[camion.id]) {
+              polylines[camion.id] = new google.maps.Polyline({
+                path,
+                geodesic: true,
+                strokeColor: "#FFD400", // amarillo
+                strokeOpacity: 0.95,
+                strokeWeight: 5,
+                map
+              });
+            } else {
+              polylines[camion.id].setPath(path);
+            }
+          }
+        });
 
-    // Si aún no tenemos ruta, arrancamos con tail
-    if (s.path.length === 0) {
-      const p = [];
-      for (const t of tail) {
-        if (Array.isArray(t) && t.length === 2) p.push({ lat: Number(t[0]), lng: Number(t[1]) });
-        else if (t && typeof t === "object") p.push({ lat: Number(t.lat), lng: Number(t.lng) });
+      } catch (e) {
+        console.error("Error cargando camiones:", e);
       }
-      if (p.length) {
-        s.path = p;
-        if (s.poly) s.poly.setPath(s.path);
-      }
     }
-  }
-
-  async function fetchAndRender() {
-    try {
-      const url = WORKER_URL + "?t=" + Date.now();
-      const r = await fetch(url, { cache: "no-store" });
-      const data = await r.json();
-
-      // Esperamos estructura del worker:
-      // { ok:true, time:..., camion1: obj|null, camion2: obj|null, items_count:n }
-      const c1 = data.camion1 || null;
-      const c2 = data.camion2 || null;
-
-      // Asegurar que existan siempre (para “se vean siempre”)
-      ensureTruckObjects("camion1", "COMPACTADOR", TRUCK_ICON_1);
-      ensureTruckObjects("camion2", "COMPACTADOR 2", TRUCK_ICON_2);
-
-      // Si viene tail, usarlo (arranque más bonito)
-      if (c1 && c1.tail) hydrateFromTail("camion1", c1.tail);
-      if (c2 && c2.tail) hydrateFromTail("camion2", c2.tail);
-
-      // Actualizar posiciones si vienen
-      if (c1 && typeof c1.lat === "number" && typeof c1.lng === "number") {
-        setTruckPosition("camion1", "COMPACTADOR", TRUCK_ICON_1, c1.lat, c1.lng);
-      } else if (state.camion1.last) {
-        // Mantener última posición
-        setTruckPosition("camion1", "COMPACTADOR", TRUCK_ICON_1, state.camion1.last.lat, state.camion1.last.lng);
-      }
-
-      if (c2 && typeof c2.lat === "number" && typeof c2.lng === "number") {
-        setTruckPosition("camion2", "COMPACTADOR 2", TRUCK_ICON_2, c2.lat, c2.lng);
-      } else if (state.camion2.last) {
-        setTruckPosition("camion2", "COMPACTADOR 2", TRUCK_ICON_2, state.camion2.last.lat, state.camion2.last.lng);
-      }
-
-      // Si al inicio no hay last, centra al DEFAULT
-      // pero si ya hay alguno, centra una sola vez
-      if (!fetchAndRender._centeredOnce) {
-        const any = state.camion1.last || state.camion2.last;
-        if (any) {
-          map.setCenter({ lat: any.lat, lng: any.lng });
-          fetchAndRender._centeredOnce = true;
-        }
-      }
-    } catch (e) {
-      console.error("Error actualizando:", e);
-      // No hagas nada: mantenemos lo último dibujado
-    }
-  }
-</script>
-
-<!-- ✅ IMPORTANTE: Pon tu Google Maps API KEY aquí -->
-<script async defer
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&callback=initMap">
-</script>
+  </script>
 
 </body>
 </html>
