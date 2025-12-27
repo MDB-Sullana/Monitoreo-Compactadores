@@ -1,547 +1,345 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monitoreo Ciudadano - Bellavista</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monitoreo Ciudadano - Bellavista</title>
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- EmailJS v4 -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>
-    emailjs.init({ publicKey: "IGGKWnrPTdwnN39yS" });
-  </script>
+    <!-- EmailJS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+        emailjs.init({
+            publicKey: "IGGKWnrPTdwnN39yS",
+        });
+    </script>
 
-  <!-- Google Maps JS API -->
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyACZqyFcGlVIhuXsKPgdmWZFXeoRHs8glk&v=weekly">
-  </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
 
-  <style>
-    body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
+        /* BOTÓN FLOTANTE */
+        #chatbot-button {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: #1e3a8a;
+            color: white;
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            z-index: 9999;
+        }
 
-    /* BOTÓN FLOTANTE */
-    #chatbot-button{
-      position: fixed; bottom: 25px; right: 25px;
-      background: #1e3a8a; color: #fff;
-      width: 65px; height: 65px; border-radius: 50%;
-      display:flex; align-items:center; justify-content:center;
-      font-size: 28px; cursor:pointer;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-      z-index: 9999;
-    }
+        /* VENTANA DEL CHAT */
+        #chatbot-window {
+            width: 330px;
+            height: 480px;
+            background: white;
+            position: fixed;
+            bottom: 100px;
+            right: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.25);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 9999;
+        }
 
-    /* VENTANA DEL CHAT */
-    #chatbot-window{
-      width: 330px; height: 480px; background: #fff;
-      position: fixed; bottom: 100px; right: 25px;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.25);
-      display: none; flex-direction: column; overflow: hidden;
-      z-index: 9999;
-    }
+        #chatbot-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background: #e5e7eb;
+        }
 
-    #chatbot-messages{
-      flex: 1; padding: 10px; overflow-y: auto; background:#e5e7eb;
-    }
+        .msg {
+            margin-bottom: 10px;
+            padding: 10px 14px;
+            max-width: 80%;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.3;
+        }
 
-    .msg{
-      margin-bottom: 10px; padding: 10px 14px; max-width: 80%;
-      border-radius: 12px; font-size: 14px; line-height: 1.3;
-    }
-    .bot{ background: white; color: black; }
-    .user{ background: #1e3a8a; color: white; margin-left:auto; }
+        .bot { background: white; color: black; }
+        .user { background: #1e3a8a; color: white; margin-left: auto; }
 
-    #chat-input-box{
-      display:flex; padding: 8px; border-top: 1px solid #ddd; background: #fff;
-    }
-    #user-input{
-      flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 8px;
-    }
-    #send-btn{
-      margin-left: 6px; background: #1e3a8a; color:#fff;
-      padding: 8px 14px; border-radius: 8px; cursor:pointer;
-    }
+        /* INPUT DE TEXTO */
+        #chat-input-box {
+            display: flex;
+            padding: 8px;
+            border-top: 1px solid #ddd;
+            background: white;
+        }
 
-    /* Map container */
-    #map {
-      width: 100%;
-      height: 80vh;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-      overflow: hidden;
-      background: #dbeafe;
-    }
+        #user-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
 
-    /* Top controls */
-    .map-toolbar{
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      margin-bottom: 12px;
-    }
-    .btn{
-      background:#1e3a8a; color:#fff; padding:10px 14px; border-radius:10px;
-      font-weight:700; cursor:pointer; box-shadow: 0 6px 12px rgba(0,0,0,0.12);
-      user-select:none;
-    }
-    .btn.secondary{ background:#0f172a; }
-    .badge{
-      background:#fff; border:1px solid #e5e7eb; padding:10px 12px; border-radius:10px;
-      font-weight:700;
-    }
+        #send-btn {
+            margin-left: 6px;
+            background: #1e3a8a;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
 
-    /* Name label above icon */
-    .truck-label{
-      background: rgba(15,23,42,0.9);
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 10px;
-      font-weight: 800;
-      font-size: 12px;
-      white-space: nowrap;
-      transform: translate(-50%, -120%);
-      position: absolute;
-      left: 50%;
-      top: 0;
-      box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-    }
-    .truck-wrap{
-      position: relative;
-      transform: translate(-50%, -100%);
-      pointer-events: auto;
-    }
-    .truck-img{
-      width: 44px;
-      height: 44px;
-      object-fit: contain;
-      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
-    }
-  </style>
+        /* ANIMACIONES PRO */
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            0% { opacity: 0; transform: translateY(25px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.06); filter: brightness(1.15); }
+        }
+
+        @keyframes slide {
+            0% { transform: translateX(-30px); opacity: 0.3; }
+            50% { transform: translateX(30px); opacity: 1; }
+            100% { transform: translateX(-30px); opacity: 0.3; }
+        }
+
+        @keyframes glow {
+            0%   { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
+            50%  { box-shadow: 0 0 20px 5px rgba(255,255,255,0.35); }
+            100% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
+        }
+    </style>
 </head>
 
 <body>
 
+<!-- HEADER PRO -->
 <header class="relative shadow-xl py-3 px-4 flex items-center justify-center">
-  <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 opacity-95"></div>
-  <div class="relative z-10 flex items-center gap-4 select-none">
-    <div class="relative">
-      <img
-        src="./logo-bellavista.jpeg"
-        onerror="this.src='https://placehold.co/100x100/1e3a8a/ffffff?text=LOGO'"
-        class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl ring-2 ring-white/40">
+    <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 opacity-95"></div>
+
+    <div class="relative z-10 flex items-center gap-4 select-none">
+
+        <!-- LOGO ANIMADO -->
+        <div class="relative">
+            <img 
+                src="./logo-bellavista.jpeg"
+                onerror="this.src='https://placehold.co/100x100/1e3a8a/ffffff?text=LOGO'"
+                class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl
+                       ring-2 ring-white/40 animate-[pulse_4s_ease-in-out_infinite]"
+            >
+            <div class="absolute inset-0 rounded-full animate-[glow_3s_infinite]"></div>
+        </div>
+
+        <!-- TEXTO -->
+        <div class="flex flex-col justify-center text-white">
+            
+            <span class="text-xs md:text-sm uppercase tracking-wide text-blue-200 font-semibold">
+                Municipalidad Distrital de Bellavista
+            </span>
+
+            <h1 class="text-lg md:text-2xl font-extrabold leading-tight drop-shadow-lg">
+                Monitoreo Ciudadano de Camiones Compactadores
+            </h1>
+
+            <div class="mt-1 h-1 w-24 bg-gradient-to-r from-blue-300 to-white rounded-full"></div>
+        </div>
     </div>
-
-    <div class="flex flex-col justify-center text-white">
-      <span class="text-xs md:text-sm uppercase tracking-wide text-blue-200 font-semibold">
-        Municipalidad Distrital de Bellavista
-      </span>
-
-      <h1 class="text-lg md:text-2xl font-extrabold leading-tight drop-shadow-lg">
-        Monitoreo Ciudadano de Camiones Compactadores
-      </h1>
-
-      <div class="mt-1 h-1 w-24 bg-gradient-to-r from-blue-300 to-white rounded-full"></div>
-    </div>
-  </div>
 </header>
 
+<!-- CONTENIDO PRINCIPAL -->
 <main class="p-4">
+    <!-- SECCIÓN MAPA (5:00 a 12:59) -->
+    <div id="map-section" class="hidden">
+        <iframe 
+            src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
+            class="w-full h-[80vh] rounded-xl shadow-xl"
+            frameborder="0"
+            allowfullscreen>
+        </iframe>
+    </div>
 
-  <div class="map-toolbar">
-    <div class="badge">🟡 Ruta en vivo + Camiones siempre visibles</div>
-    <div class="btn" id="btn-live">En vivo (Auto)</div>
-    <div class="btn secondary" id="btn-center">Centrar</div>
-    <div class="badge" id="status-text">Estado: esperando Google Maps…</div>
-  </div>
+    <!-- SECCIÓN COCHERA PRO (13:00 a 4:59) -->
+    <div id="cochera-section" class="hidden flex items-center justify-center h-[80vh]">
+        
+        <div class="relative w-full flex items-center justify-center p-6">
 
-  <div id="map"></div>
+            <!-- Fondo PRO -->
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 opacity-95 rounded-3xl shadow-2xl"></div>
 
+            <!-- TARJETA PRO -->
+            <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl 
+                        p-8 md:p-12 max-w-5xl w-full flex flex-col md:flex-row items-center gap-10
+                        animate-[fadeIn_1s_ease-out]">
+
+                <!-- LOGO -->
+                <div class="flex flex-col items-center">
+                    <img 
+                        src="./logo-bellavista.jpeg" 
+                        onerror="this.src='https://placehold.co/200x200/1e3a8a/ffffff?text=LOGO';"
+                        class="w-40 h-40 md:w-48 md:h-48 rounded-full shadow-xl object-cover animate-[pulse_3s_infinite] ring-4 ring-white/40"
+                    >
+
+                    <div class="mt-3 w-24 h-1 bg-gradient-to-r from-blue-300 to-white rounded-full animate-[slide_2s_infinite]"></div>
+                </div>
+
+                <!-- TEXTO -->
+                <div class="text-center md:text-left animate-[slideUp_1s_ease-out]">
+
+                    <h2 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight text-white drop-shadow-lg">
+                        EL SERVICIO DE RECOLECCIÓN HA CONCLUIDO POR HOY
+                        <span class="block text-blue-200">NUESTROS CAMIONES ESTÁN EN COCHERA</span>
+                    </h2>
+
+                    <p class="text-lg md:text-xl mb-3 text-blue-100 font-medium">
+                        NOS REENCONTRAMOS MAÑANA PARA SEGUIR TRABAJANDO POR UN BELLAVISTA LIMPIO.
+                    </p>
+
+                    <p class="text-base md:text-lg text-blue-200 font-semibold">
+                        GRACIAS POR CUIDAR DE TU CIUDAD.
+                    </p>
+
+                    <p class="mt-6 text-xs md:text-sm text-blue-300 font-light">
+                        Horario del monitoreo: de 5:00 a 13:00 horas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
+<!-- BOTÓN FLOTANTE -->
 <div id="chatbot-button">💬</div>
 
+<!-- CHATBOT -->
 <div id="chatbot-window">
-  <div id="chatbot-messages"></div>
-  <div id="chat-input-box">
-    <input type="text" id="user-input" placeholder="Escribe aquí...">
-    <button id="send-btn">Enviar</button>
-  </div>
+    <div id="chatbot-messages"></div>
+    <div id="chat-input-box">
+        <input type="text" id="user-input" placeholder="Escribe aquí...">
+        <button id="send-btn">Enviar</button>
+    </div>
 </div>
 
 <script>
-/* =========================
-   CONFIG
-========================= */
-const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/";
+    // ----- LÓGICA HORARIA -----
+    function configurarVista() {
+        const now = new Date();
+        const hour = now.getHours();
+        const mapSection = document.getElementById("map-section");
+        const cocheraSection = document.getElementById("cochera-section");
 
-// IDs compactadores
-const DEVICE_IDS = [305, 809];
+        if (hour >= 22 || hour < 5) {
+            cocheraSection.classList.remove("hidden");
+            mapSection.classList.add("hidden");
+        } else {
+            mapSection.classList.remove("hidden");
+            cocheraSection.classList.add("hidden");
+        }
+    }
 
-// polling
-const POLL_MS = 8000;
+    window.addEventListener("load", configurarVista);
 
-// Iconos locales
-const ICONS = {
-  305: "./Compactador.jpeg",
-  809: "./Compactador2.jpeg"
-};
+    // ----- CHATBOT -----
+    const botBtn = document.getElementById("chatbot-button");
+    const botWindow = document.getElementById("chatbot-window");
+    const messages = document.getElementById("chatbot-messages");
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
 
-// Horarios de “dibujar línea amarilla”
-function dentroDeHorarioRuta() {
-  const now = new Date();
-  const minutes = now.getHours() * 60 + now.getMinutes();
+    let step = 0;
+    let data = { name: "", direccion: "", incidencia: "" };
 
-  const m1Start = 7 * 60;        // 07:00
-  const m1End   = 12 * 60 + 30;  // 12:30
-  const t1Start = 14 * 60;       // 14:00
-  const t1End   = 22 * 60;       // 22:00
+    function botSay(text) {
+        const div = document.createElement("div");
+        div.className = "msg bot";
+        div.innerHTML = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
 
-  return (minutes >= m1Start && minutes <= m1End) || (minutes >= t1Start && minutes <= t1End);
-}
+    function userSay(text) {
+        const div = document.createElement("div");
+        div.className = "msg user";
+        div.innerHTML = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
 
-function toNum(v) {
-  const n = (typeof v === "number") ? v : parseFloat(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-/* =========================
-   GOOGLE MAP + OVERLAY ICONS
-========================= */
-let map;
-let liveTimer = null;
-
-const polylines = new Map();   // id -> google.maps.Polyline
-
-class HtmlMarker extends google.maps.OverlayView {
-  constructor(position, map, id, name, iconUrl) {
-    super();
-    this.position = position;
-    this.id = id;
-    this.name = name;
-    this.iconUrl = iconUrl;
-    this.div = null;
-    this.setMap(map);
-  }
-
-  onAdd() {
-    const div = document.createElement("div");
-    div.className = "truck-wrap";
-
-    const label = document.createElement("div");
-    label.className = "truck-label";
-    label.textContent = this.name;
-
-    const img = document.createElement("img");
-    img.className = "truck-img";
-    img.src = this.iconUrl;
-    img.onerror = () => {
-      img.src = "https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png";
+    botBtn.onclick = () => {
+        botWindow.style.display =
+            botWindow.style.display === "flex" ? "none" : "flex";
+        if (messages.innerHTML.trim() === "") startChat();
     };
 
-    div.appendChild(label);
-    div.appendChild(img);
-
-    this.div = div;
-    this.getPanes().overlayMouseTarget.appendChild(div);
-  }
-
-  draw() {
-    const projection = this.getProjection();
-    if (!projection || !this.div) return;
-
-    const point = projection.fromLatLngToDivPixel(this.position);
-    this.div.style.position = "absolute";
-    this.div.style.left = point.x + "px";
-    this.div.style.top = point.y + "px";
-  }
-
-  onRemove() {
-    if (this.div) this.div.remove();
-    this.div = null;
-  }
-
-  setPosition(latLng) {
-    this.position = latLng;
-    this.draw();
-  }
-
-  setName(name) {
-    this.name = name;
-    if (this.div) {
-      const label = this.div.querySelector(".truck-label");
-      if (label) label.textContent = name;
-    }
-  }
-}
-
-const htmlMarkers = new Map(); // id -> HtmlMarker
-
-function initMap() {
-  const center = { lat: -4.8848, lng: -80.6781 };
-
-  map = new google.maps.Map(document.getElementById("map"), {
-    center,
-    zoom: 15,
-    mapTypeId: "hybrid",
-    streetViewControl: false,
-    mapTypeControl: true,
-    fullscreenControl: true,
-    gestureHandling: "greedy"
-  });
-
-  setStatus("mapa listo ✅");
-  startLive();
-
-  document.getElementById("btn-live").addEventListener("click", () => {
-    if (liveTimer) stopLive();
-    else startLive();
-  });
-
-  document.getElementById("btn-center").addEventListener("click", () => {
-    map.setCenter(center);
-    map.setZoom(15);
-  });
-}
-
-function stopLive() {
-  clearInterval(liveTimer);
-  liveTimer = null;
-  document.getElementById("btn-live").textContent = "En vivo (OFF)";
-  setStatus("en vivo detenido ⏸️");
-}
-
-function startLive() {
-  document.getElementById("btn-live").textContent = "En vivo (ON)";
-  setStatus("cargando camiones…");
-  tick();
-  liveTimer = setInterval(tick, POLL_MS);
-}
-
-/* =========================
-   FETCH + DIBUJO
-========================= */
-async function fetchWorker(url) {
-  const r = await fetch(url, { cache: "no-store" });
-  return await r.json();
-}
-
-// modo recomendado: 1 llamada general (más estable que 2 llamadas device_id)
-async function fetchAllTrucks() {
-  const url = WORKER_URL + "?_=" + Date.now();
-  return await fetchWorker(url);
-}
-
-// fallback: por si quieres forzar device_id
-async function fetchDevice(id) {
-  const url = WORKER_URL + "?device_id=" + encodeURIComponent(id) + "&_=" + Date.now();
-  return await fetchWorker(url);
-}
-
-function ensurePolyline(id) {
-  if (polylines.has(id)) return polylines.get(id);
-
-  const pl = new google.maps.Polyline({
-    path: [],
-    geodesic: true,
-    strokeOpacity: 0.95,
-    strokeWeight: 5,
-    strokeColor: "#FFD400"
-  });
-  pl.setMap(map);
-  polylines.set(id, pl);
-  return pl;
-}
-
-function updateTruck(id, item) {
-  const lat = toNum(item.lat);
-  const lng = toNum(item.lng);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return false;
-  }
-
-  const pos = new google.maps.LatLng(lat, lng);
-
-  // HTML marker
-  if (!htmlMarkers.has(id)) {
-    const hm = new HtmlMarker(pos, map, id, item.name || ("Camión " + id), ICONS[id] || ICONS[305]);
-    htmlMarkers.set(id, hm);
-  } else {
-    const hm = htmlMarkers.get(id);
-    hm.setPosition(pos);
-    hm.setName(item.name || ("Camión " + id));
-  }
-
-  // Ruta amarilla en horario
-  const habilitarLinea = dentroDeHorarioRuta();
-  const pl = ensurePolyline(id);
-
-  if (habilitarLinea && Array.isArray(item.tail) && item.tail.length) {
-    const path = item.tail
-      .map(p => ({ lat: toNum(p.lat), lng: toNum(p.lng) }))
-      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-
-    if (path.length) {
-      pl.setPath(path);
-      pl.setOptions({ strokeColor: "#FFD400" });
-      pl.setMap(map);
-    }
-  } else {
-    pl.setMap(null);
-  }
-
-  return true;
-}
-
-function setStatus(text) {
-  document.getElementById("status-text").textContent = "Estado: " + text;
-}
-
-async function tick() {
-  try {
-    // 1) Intento principal: una sola llamada general
-    const res = await fetchAllTrucks();
-
-    if (!res || res.ok !== true) {
-      setStatus("worker no OK (cookie/endpoint) ⚠️");
-      return;
+    function startChat() {
+        step = 0;
+        botSay("👋 Hola vecino, gracias por apoyar el monitoreo ciudadano.");
+        setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
     }
 
-    let updated = 0;
+    sendBtn.onclick = () => processUserMessage();
+    input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") processUserMessage();
+    });
 
-    // Soporta forma general: camion1/camion2
-    const c1 = res.camion1 || null;
-    const c2 = res.camion2 || null;
+    function processUserMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        userSay(text);
+        input.value = "";
 
-    if (c1 && updateTruck(Number(c1.id), c1)) updated++;
-    if (c2 && updateTruck(Number(c2.id), c2)) updated++;
-
-    // Si no vino camion1/camion2 pero sí vino item (por algún motivo)
-    if (updated === 0 && res.item) {
-      if (updateTruck(Number(res.item.id), res.item)) updated++;
+        if (step === 0) {
+            data.name = text;
+            step = 1;
+            setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
+        } 
+        else if (step === 1) {
+            data.direccion = text;
+            step = 2;
+            setTimeout(() => botSay("Por favor describe la incidencia."), 500);
+        } 
+        else if (step === 2) {
+            data.incidencia = text;
+            step = 3;
+            sendReport();
+        }
     }
 
-    // 2) Fallback: si items_count=0 o no actualizó nada, probamos device_id
-    if (updated === 0) {
-      const [r305, r809] = await Promise.all([fetchDevice(305), fetchDevice(809)]);
-      if (r305?.ok && r305.item && updateTruck(305, r305.item)) updated++;
-      if (r809?.ok && r809.item && updateTruck(809, r809.item)) updated++;
+    function sendReport() {
+        botSay("⏳ Enviando reporte, por favor espera...");
+
+        const msg =
+            "Dirección: " + data.direccion + "\n" +
+            "Incidencia: " + data.incidencia;
+
+        emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+            name: data.name,
+            time: new Date().toLocaleString(),
+            message: msg
+        })
+        .then(() => {
+            botSay("✔️ ¡Tu reporte fue enviado por correo!");
+        })
+        .catch(() => {
+            botSay("❌ Hubo un problema al enviar el correo.");
+        });
     }
-
-    if (updated > 0) {
-      const horario = dentroDeHorarioRuta() ? " (ruta amarilla ON)" : " (ruta amarilla OFF por horario)";
-      setStatus("camiones actualizados ✅" + horario);
-    } else {
-      setStatus("sin datos (items_count=0 o cookie) ⚠️");
-    }
-
-  } catch (e) {
-    console.error(e);
-    setStatus("error al actualizar ❌");
-  }
-}
-
-/* Espera a que cargue Google Maps */
-(function waitForMaps() {
-  const t = setInterval(() => {
-    if (window.google && google.maps && google.maps.Map) {
-      clearInterval(t);
-      initMap();
-    }
-  }, 120);
-})();
-</script>
-
-<script>
-/* =========================
-   CHATBOT + EMAILJS (SIN TOCAR)
-========================= */
-const botBtn = document.getElementById("chatbot-button");
-const botWindow = document.getElementById("chatbot-window");
-const messages = document.getElementById("chatbot-messages");
-const input = document.getElementById("user-input");
-const sendBtn = document.getElementById("send-btn");
-
-let step = 0;
-let data = { name: "", direccion: "", incidencia: "" };
-
-function botSay(text) {
-  const div = document.createElement("div");
-  div.className = "msg bot";
-  div.innerHTML = text;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function userSay(text) {
-  const div = document.createElement("div");
-  div.className = "msg user";
-  div.innerHTML = text;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-botBtn.onclick = () => {
-  botWindow.style.display = (botWindow.style.display === "flex") ? "none" : "flex";
-  if (messages.innerHTML.trim() === "") startChat();
-};
-
-function startChat() {
-  step = 0;
-  botSay("👋 Hola vecino, gracias por apoyar el monitoreo ciudadano.");
-  setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
-}
-
-sendBtn.onclick = () => processUserMessage();
-input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") processUserMessage();
-});
-
-function processUserMessage() {
-  const text = input.value.trim();
-  if (!text) return;
-  userSay(text);
-  input.value = "";
-
-  if (step === 0) {
-    data.name = text;
-    step = 1;
-    setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
-  }
-  else if (step === 1) {
-    data.direccion = text;
-    step = 2;
-    setTimeout(() => botSay("Por favor describe la incidencia."), 500);
-  }
-  else if (step === 2) {
-    data.incidencia = text;
-    step = 3;
-    sendReport();
-  }
-}
-
-function sendReport() {
-  botSay("⏳ Enviando reporte, por favor espera...");
-
-  const msg =
-    "Dirección: " + data.direccion + "\n" +
-    "Incidencia: " + data.incidencia;
-
-  emailjs.send("service_6n1vp4m", "template_7yj72fo", {
-    name: data.name,
-    time: new Date().toLocaleString(),
-    message: msg
-  })
-  .then(() => {
-    botSay("✔️ ¡Tu reporte fue enviado por correo!");
-  })
-  .catch(() => {
-    botSay("❌ Hubo un problema al enviar el correo.");
-  });
-}
 </script>
 
 </body>
 </html>
-
