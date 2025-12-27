@@ -1,198 +1,414 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monitoreo Ciudadano - Bellavista</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoreo Ciudadano - Bellavista</title>
 
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- EmailJS -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <script>
-        emailjs.init({ publicKey: "IGGKWnrPTdwnN39yS" });
-    </script>
+  <!-- Fuente Inter -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  </style>
 
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
+  <!-- EmailJS v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    emailjs.init({ publicKey: "IGGKWnrPTdwnN39yS" });
+  </script>
 
-        #chatbot-button {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            background: #1e3a8a;
-            color: white;
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            cursor: pointer;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-            z-index: 9999;
-        }
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
 
-        #chatbot-window {
-            width: 330px;
-            height: 480px;
-            background: white;
-            position: fixed;
-            bottom: 100px;
-            right: 25px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.25);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 9999;
-        }
+    /* BOTÓN FLOTANTE */
+    #chatbot-button {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: #1e3a8a;
+      color: white;
+      width: 65px;
+      height: 65px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      cursor: pointer;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+      z-index: 9999;
+    }
 
-        #chatbot-messages {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-            background: #e5e7eb;
-        }
+    /* VENTANA DEL CHAT */
+    #chatbot-window {
+      width: 330px;
+      height: 480px;
+      background: white;
+      position: fixed;
+      bottom: 100px;
+      right: 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.25);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 9999;
+    }
 
-        .msg {
-            margin-bottom: 10px;
-            padding: 10px 14px;
-            max-width: 80%;
-            border-radius: 12px;
-            font-size: 14px;
-        }
+    #chatbot-messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #e5e7eb;
+    }
 
-        .bot { background: white; }
-        .user { background: #1e3a8a; color: white; margin-left: auto; }
+    .msg {
+      margin-bottom: 10px;
+      padding: 10px 14px;
+      max-width: 80%;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.3;
+    }
 
-        #chat-input-box {
-            display: flex;
-            padding: 8px;
-            border-top: 1px solid #ddd;
-        }
+    .bot { background: white; color: black; }
+    .user { background: #1e3a8a; color: white; margin-left: auto; }
 
-        #user-input {
-            flex: 1;
-            padding: 8px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-        }
+    /* INPUT DE TEXTO */
+    #chat-input-box {
+      display: flex;
+      padding: 8px;
+      border-top: 1px solid #ddd;
+      background: white;
+    }
 
-        #send-btn {
-            margin-left: 6px;
-            background: #1e3a8a;
-            color: white;
-            padding: 8px 14px;
-            border-radius: 8px;
-        }
-    </style>
+    #user-input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    #send-btn {
+      margin-left: 6px;
+      background: #1e3a8a;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* ANIMACIONES */
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: scale(0.97); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideUp {
+      0% { opacity: 0; transform: translateY(18px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.06); filter: brightness(1.12); }
+    }
+    @keyframes glow {
+      0%   { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
+      50%  { box-shadow: 0 0 20px 5px rgba(255,255,255,0.35); }
+      100% { box-shadow: 0 0 0px 0px rgba(255,255,255,0.0); }
+    }
+  </style>
 </head>
 
-<body>
+<body class="min-h-screen">
 
-<header class="bg-blue-900 text-white text-center py-4 shadow-xl">
-    <h1 class="text-2xl font-extrabold">
-        Monitoreo Ciudadano de Camiones Compactadores
-    </h1>
-    <p class="text-blue-200 text-sm">
-        Municipalidad Distrital de Bellavista
-    </p>
-</header>
+  <!-- HEADER PRO (CON LOGO, NO SE PIERDE) -->
+  <header class="relative shadow-xl py-3 px-4 flex items-center justify-center">
+    <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 opacity-95"></div>
 
-<main class="p-4">
+    <div class="relative z-10 flex items-center gap-4 select-none">
+      <!-- LOGO -->
+      <div class="relative">
+        <img
+          src="./logo-bellavista.jpeg"
+          onerror="this.src='https://placehold.co/120x120/1e3a8a/ffffff?text=LOGO'"
+          class="h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-xl ring-2 ring-white/40 animate-[pulse_4s_ease-in-out_infinite]"
+          alt="Logo Bellavista"
+        />
+        <div class="absolute inset-0 rounded-full animate-[glow_3s_infinite]"></div>
+      </div>
 
-    <!-- BANDA TURNO MAPA -->
+      <!-- TEXTO -->
+      <div class="flex flex-col justify-center text-white">
+        <span class="text-xs md:text-sm uppercase tracking-wide text-blue-200 font-semibold">
+          Municipalidad Distrital de Bellavista
+        </span>
+        <h1 class="text-lg md:text-2xl font-extrabold leading-tight drop-shadow-lg">
+          Monitoreo Ciudadano de Camiones Compactadores
+        </h1>
+        <div class="mt-1 h-1 w-24 bg-gradient-to-r from-blue-300 to-white rounded-full"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="p-4">
+
+    <!-- BANDA TURNO MAPA (MENSAJE DINÁMICO) -->
     <div id="turno-banner" class="hidden mb-3">
-        <div id="turno-bg"
-            class="w-full rounded-xl px-6 py-3 text-white text-center font-semibold shadow-lg">
-            <span id="turno-text"></span>
-        </div>
+      <div
+        id="turno-bg"
+        class="w-full rounded-xl px-6 py-3 text-white text-center font-semibold shadow-lg"
+      >
+        <span id="turno-text"></span>
+      </div>
     </div>
 
     <!-- MAPA -->
     <div id="map-section" class="hidden">
-        <iframe 
-            src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
-            class="w-full h-[80vh] rounded-xl shadow-xl">
-        </iframe>
+      <iframe
+        src="https://monitoreo.gpseyes.pe/sharing/f26738032cc992ea790a7a6d80f5b066"
+        class="w-full h-[80vh] rounded-xl shadow-xl"
+        frameborder="0"
+        allowfullscreen
+      ></iframe>
     </div>
 
-    <!-- COCHERA -->
+    <!-- COCHERA (CON LOGO SIEMPRE) -->
     <div id="cochera-section" class="hidden flex items-center justify-center h-[80vh]">
-        <div class="bg-blue-900 text-white rounded-3xl shadow-2xl p-10 text-center max-w-3xl">
-            <h2 class="text-3xl font-extrabold mb-4">
-                CAMIONES EN COCHERA
-                <span class="block text-blue-200">Servicio no disponible</span>
+      <div class="relative w-full flex items-center justify-center p-4 md:p-6">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 opacity-95 rounded-3xl shadow-2xl"></div>
+
+        <div class="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl
+                    p-8 md:p-12 max-w-5xl w-full flex flex-col md:flex-row items-center gap-10
+                    animate-[fadeIn_0.8s_ease-out]">
+
+          <!-- LOGO (NO SE PIERDE EN COCHERA) -->
+          <div class="flex flex-col items-center">
+            <img
+              src="./logo-bellavista.jpeg"
+              onerror="this.src='https://placehold.co/220x220/1e3a8a/ffffff?text=LOGO';"
+              class="w-40 h-40 md:w-48 md:h-48 rounded-full shadow-xl object-cover animate-[pulse_3s_infinite] ring-4 ring-white/40"
+              alt="Logo Bellavista"
+            />
+            <div class="mt-3 w-28 h-1 bg-gradient-to-r from-blue-300 to-white rounded-full opacity-90"></div>
+          </div>
+
+          <!-- TEXTO -->
+          <div class="text-center md:text-left animate-[slideUp_0.8s_ease-out]">
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight text-white drop-shadow-lg">
+              CAMIONES EN COCHERA
+              <span class="block text-blue-200">Servicio no disponible</span>
             </h2>
-            <p class="text-lg mb-2">
-                El servicio de recolección no se encuentra operativo en este horario.
+
+            <p class="text-lg md:text-xl mb-3 text-blue-100 font-medium">
+              El servicio de recolección no se encuentra operativo en este horario.
             </p>
-            <p class="text-blue-300 text-sm">
-                Horario de monitoreo: 5:00 a.m. – 1:00 p.m. y 2:00 p.m. – 9:30 p.m.
+
+            <!-- MENSAJE DINÁMICO EN COCHERA (HORA + PRÓXIMA APERTURA) -->
+            <p id="cochera-dinamico" class="text-base md:text-lg text-white/90 font-semibold"></p>
+
+            <p class="mt-6 text-xs md:text-sm text-blue-200 font-medium">
+              Horario de monitoreo (MAPA):
+              <span class="font-semibold text-white">5:00 a.m. – 1:00 p.m.</span>
+              y
+              <span class="font-semibold text-white">2:00 p.m. – 9:30 p.m.</span>
             </p>
+            <p class="mt-1 text-xs md:text-sm text-blue-300 font-light">
+              Cochera:
+              <span class="text-white/90">1:00 p.m. – 2:00 p.m.</span>
+              y
+              <span class="text-white/90">9:30 p.m. – 5:00 a.m.</span>
+            </p>
+          </div>
+
         </div>
+      </div>
     </div>
 
-</main>
+  </main>
 
-<!-- BOTÓN CHAT -->
-<div id="chatbot-button">💬</div>
+  <!-- BOTÓN FLOTANTE -->
+  <div id="chatbot-button">💬</div>
 
-<!-- CHAT -->
-<div id="chatbot-window">
+  <!-- CHATBOT -->
+  <div id="chatbot-window">
     <div id="chatbot-messages"></div>
     <div id="chat-input-box">
-        <input id="user-input" placeholder="Escribe aquí..." />
-        <button id="send-btn">Enviar</button>
+      <input type="text" id="user-input" placeholder="Escribe aquí..." />
+      <button id="send-btn">Enviar</button>
     </div>
-</div>
+  </div>
 
-<script>
+  <script>
+    // =========================
+    //  HORARIOS
+    //  MAPA:   05:00–13:00 y 14:00–21:30
+    //  COCHERA:13:00–14:00 y 21:30–05:00
+    // =========================
+
     function two(n){ return String(n).padStart(2,"0"); }
-    function inRange(s,e,n){ return s<=e ? n>=s&&n<e : n>=s||n<e; }
+    function fmt(mins){
+      mins = ((mins % 1440) + 1440) % 1440;
+      const h = Math.floor(mins/60);
+      const m = mins%60;
+      return `${two(h)}:${two(m)}`;
+    }
+    function inRange(startMin, endMin, nowMin){
+      // incluye start, excluye end
+      return startMin <= endMin ? (nowMin >= startMin && nowMin < endMin) : (nowMin >= startMin || nowMin < endMin);
+    }
 
     function configurarVista(){
-        const now = new Date();
-        const h = now.getHours();
-        const m = now.getMinutes();
-        const nowMin = h*60+m;
+      const now = new Date();
+      const h = now.getHours();
+      const m = now.getMinutes();
+      const nowMin = h*60 + m;
 
-        const map = document.getElementById("map-section");
-        const cochera = document.getElementById("cochera-section");
-        const banner = document.getElementById("turno-banner");
-        const text = document.getElementById("turno-text");
-        const bg = document.getElementById("turno-bg");
+      const map = document.getElementById("map-section");
+      const cochera = document.getElementById("cochera-section");
+      const banner = document.getElementById("turno-banner");
+      const text = document.getElementById("turno-text");
+      const bg = document.getElementById("turno-bg");
+      const cocheraDyn = document.getElementById("cochera-dinamico");
 
-        const pausa = inRange(13*60,14*60,nowMin);
-        const noche = inRange(21*60+30,5*60,nowMin);
-        const horaTxt = `${two(h)}:${two(m)}`;
+      const pausaCochera = inRange(13*60, 14*60, nowMin);          // 13:00–14:00
+      const nocheCochera = inRange(21*60+30, 5*60, nowMin);        // 21:30–05:00 (cruza medianoche)
 
-        if(pausa || noche){
-            map.classList.add("hidden");
-            cochera.classList.remove("hidden");
-            banner.classList.add("hidden");
-            return;
-        }
+      const horaTxt = `${two(h)}:${two(m)}`;
 
-        cochera.classList.add("hidden");
-        map.classList.remove("hidden");
-        banner.classList.remove("hidden");
+      // ----- COCHERA -----
+      if(pausaCochera || nocheCochera){
+        map.classList.add("hidden");
+        cochera.classList.remove("hidden");
+        banner.classList.add("hidden");
 
-        if(h>=5 && h<13){
-            text.textContent = `🟢 TURNO MAÑANA ACTIVO · ${horaTxt}`;
-            bg.className = "w-full rounded-xl px-6 py-3 text-white text-center font-semibold shadow-lg bg-gradient-to-r from-green-600 to-emerald-500";
+        // Mensaje dinámico en cochera: hora + próxima apertura de mapa
+        let nextOpenMin;
+        if(pausaCochera){
+          nextOpenMin = 14*60; // 14:00 hoy
+          cocheraDyn.textContent = `⏰ Hora actual: ${horaTxt} · El monitoreo (MAPA) se reanuda a las ${fmt(nextOpenMin)}.`;
         } else {
-            text.textContent = `🔵 TURNO TARDE ACTIVO · ${horaTxt}`;
-            bg.className = "w-full rounded-xl px-6 py-3 text-white text-center font-semibold shadow-lg bg-gradient-to-r from-blue-600 to-cyan-500";
+          // Noche: si es antes de 05:00, abre 05:00 hoy; si es después de 21:30, abre 05:00 mañana
+          if(nowMin < 5*60){
+            nextOpenMin = 5*60; // 05:00 hoy
+            cocheraDyn.textContent = `🌙 Hora actual: ${horaTxt} · El monitoreo (MAPA) inicia a las ${fmt(nextOpenMin)}.`;
+          } else {
+            nextOpenMin = 5*60; // 05:00 (siguiente día)
+            cocheraDyn.textContent = `🌙 Hora actual: ${horaTxt} · El monitoreo (MAPA) inicia mañana a las ${fmt(nextOpenMin)}.`;
+          }
         }
+        return;
+      }
+
+      // ----- MAPA ACTIVO -----
+      cochera.classList.add("hidden");
+      map.classList.remove("hidden");
+      banner.classList.remove("hidden");
+
+      // Mensaje dinámico según turno (solo cuando está el MAPA)
+      if(inRange(5*60, 13*60, nowMin)){
+        text.textContent = `🟢 TURNO MAÑANA ACTIVO · ${horaTxt} · Recolección en curso`;
+        bg.className = "w-full rounded-xl px-6 py-3 text-white text-center font-semibold shadow-lg bg-gradient-to-r from-green-600 to-emerald-500";
+      } else {
+        // aquí cae 14:00–21:30
+        text.textContent = `🔵 TURNO TARDE ACTIVO · ${horaTxt} · Recolección en curso`;
+        bg.className = "w-full rounded-xl px-6 py-3 text-white text-center font-semibold shadow-lg bg-gradient-to-r from-blue-600 to-cyan-500";
+      }
     }
 
     window.addEventListener("load", configurarVista);
     setInterval(configurarVista, 20000);
-</script>
+
+    // =========================
+    //  CHATBOT (EMAIL)
+    // =========================
+    const botBtn = document.getElementById("chatbot-button");
+    const botWindow = document.getElementById("chatbot-window");
+    const messages = document.getElementById("chatbot-messages");
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    let step = 0;
+    let data = { name: "", direccion: "", incidencia: "" };
+
+    function botSay(text) {
+      const div = document.createElement("div");
+      div.className = "msg bot";
+      div.innerHTML = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function userSay(text) {
+      const div = document.createElement("div");
+      div.className = "msg user";
+      div.innerHTML = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    botBtn.onclick = () => {
+      botWindow.style.display = (botWindow.style.display === "flex") ? "none" : "flex";
+      if (messages.innerHTML.trim() === "") startChat();
+    };
+
+    function startChat() {
+      step = 0;
+      botSay("👋 Hola vecino, gracias por apoyar el monitoreo ciudadano.");
+      setTimeout(() => botSay("¿Cuál es tu nombre?"), 600);
+    }
+
+    sendBtn.onclick = () => processUserMessage();
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") processUserMessage();
+    });
+
+    function processUserMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      userSay(text);
+      input.value = "";
+
+      if (step === 0) {
+        data.name = text;
+        step = 1;
+        setTimeout(() => botSay("¿En qué dirección ocurre el problema?"), 500);
+      }
+      else if (step === 1) {
+        data.direccion = text;
+        step = 2;
+        setTimeout(() => botSay("Por favor describe la incidencia."), 500);
+      }
+      else if (step === 2) {
+        data.incidencia = text;
+        step = 3;
+        sendReport();
+      }
+    }
+
+    function sendReport() {
+      botSay("⏳ Enviando reporte, por favor espera...");
+
+      const msg =
+        "Dirección: " + data.direccion + "\n" +
+        "Incidencia: " + data.incidencia;
+
+      emailjs.send("service_6n1vp4m", "template_7yj72fo", {
+        name: data.name,
+        time: new Date().toLocaleString(),
+        message: msg
+      })
+      .then(() => {
+        botSay("✔️ ¡Tu reporte fue enviado por correo!");
+      })
+      .catch(() => {
+        botSay("❌ Hubo un problema al enviar el correo.");
+      });
+    }
+  </script>
 
 </body>
 </html>
