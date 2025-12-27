@@ -72,6 +72,7 @@
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.15);
       overflow: hidden;
+      background: #dbeafe;
     }
 
     /* Top controls */
@@ -108,6 +109,7 @@
     .truck-wrap{
       position: relative;
       transform: translate(-50%, -100%);
+      pointer-events: auto;
     }
     .truck-img{
       width: 44px;
@@ -120,11 +122,9 @@
 
 <body>
 
-<!-- HEADER PRO -->
 <header class="relative shadow-xl py-3 px-4 flex items-center justify-center">
   <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 opacity-95"></div>
   <div class="relative z-10 flex items-center gap-4 select-none">
-
     <div class="relative">
       <img
         src="./logo-bellavista.jpeg"
@@ -148,23 +148,19 @@
 
 <main class="p-4">
 
-  <!-- CONTROLES DEL MAPA -->
   <div class="map-toolbar">
     <div class="badge">🟡 Ruta en vivo + Camiones siempre visibles</div>
     <div class="btn" id="btn-live">En vivo (Auto)</div>
     <div class="btn secondary" id="btn-center">Centrar</div>
-    <div class="badge" id="status-text">Estado: iniciando…</div>
+    <div class="badge" id="status-text">Estado: esperando Google Maps…</div>
   </div>
 
-  <!-- MAPA -->
   <div id="map"></div>
 
 </main>
 
-<!-- BOTÓN FLOTANTE -->
 <div id="chatbot-button">💬</div>
 
-<!-- CHATBOT -->
 <div id="chatbot-window">
   <div id="chatbot-messages"></div>
   <div id="chat-input-box">
@@ -177,11 +173,15 @@
 /* =========================
    CONFIG
 ========================= */
-const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/"; // tu worker
-const DEVICE_IDS = [305, 809]; // COMPACTADOR y COMPACTADOR 2
-const POLL_MS = 8000; // cada 8s
+const WORKER_URL = "https://gps-bellavista.karolmauricio12.workers.dev/";
 
-// Iconos (deben existir en tu repo)
+// IDs compactadores
+const DEVICE_IDS = [305, 809];
+
+// polling
+const POLL_MS = 8000;
+
+// Iconos locales
 const ICONS = {
   305: "./Compactador.jpeg",
   809: "./Compactador2.jpeg"
@@ -190,9 +190,7 @@ const ICONS = {
 // Horarios de “dibujar línea amarilla”
 function dentroDeHorarioRuta() {
   const now = new Date();
-  const h = now.getHours();
-  const m = now.getMinutes();
-  const minutes = h * 60 + m;
+  const minutes = now.getHours() * 60 + now.getMinutes();
 
   const m1Start = 7 * 60;        // 07:00
   const m1End   = 12 * 60 + 30;  // 12:30
@@ -200,6 +198,11 @@ function dentroDeHorarioRuta() {
   const t1End   = 22 * 60;       // 22:00
 
   return (minutes >= m1Start && minutes <= m1End) || (minutes >= t1Start && minutes <= t1End);
+}
+
+function toNum(v) {
+  const n = (typeof v === "number") ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 /* =========================
@@ -210,7 +213,6 @@ let liveTimer = null;
 
 const polylines = new Map();   // id -> google.maps.Polyline
 
-// Custom marker label (HTML) usando OverlayView
 class HtmlMarker extends google.maps.OverlayView {
   constructor(position, map, id, name, iconUrl) {
     super();
@@ -241,8 +243,7 @@ class HtmlMarker extends google.maps.OverlayView {
     div.appendChild(img);
 
     this.div = div;
-    const panes = this.getPanes();
-    panes.overlayMouseTarget.appendChild(div);
+    this.getPanes().overlayMouseTarget.appendChild(div);
   }
 
   draw() {
@@ -277,7 +278,6 @@ class HtmlMarker extends google.maps.OverlayView {
 const htmlMarkers = new Map(); // id -> HtmlMarker
 
 function initMap() {
-  // Centro Bellavista aprox
   const center = { lat: -4.8848, lng: -80.6781 };
 
   map = new google.maps.Map(document.getElementById("map"), {
@@ -291,8 +291,6 @@ function initMap() {
   });
 
   setStatus("mapa listo ✅");
-
-  // Auto arrancar “En vivo”
   startLive();
 
   document.getElementById("btn-live").addEventListener("click", () => {
@@ -316,17 +314,28 @@ function stopLive() {
 function startLive() {
   document.getElementById("btn-live").textContent = "En vivo (ON)";
   setStatus("cargando camiones…");
-  tick(); // una vez al inicio
+  tick();
   liveTimer = setInterval(tick, POLL_MS);
 }
 
 /* =========================
    FETCH + DIBUJO
 ========================= */
-async function fetchDevice(id) {
-  const url = WORKER_URL + "?device_id=" + encodeURIComponent(id) + "&_=" + Date.now();
+async function fetchWorker(url) {
   const r = await fetch(url, { cache: "no-store" });
   return await r.json();
+}
+
+// modo recomendado: 1 llamada general (más estable que 2 llamadas device_id)
+async function fetchAllTrucks() {
+  const url = WORKER_URL + "?_=" + Date.now();
+  return await fetchWorker(url);
+}
+
+// fallback: por si quieres forzar device_id
+async function fetchDevice(id) {
+  const url = WORKER_URL + "?device_id=" + encodeURIComponent(id) + "&_=" + Date.now();
+  return await fetchWorker(url);
 }
 
 function ensurePolyline(id) {
@@ -344,19 +353,17 @@ function ensurePolyline(id) {
   return pl;
 }
 
-function toNum(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
 function updateTruck(id, item) {
   const lat = toNum(item.lat);
   const lng = toNum(item.lng);
-  if (lat === null || lng === null) return;
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return false;
+  }
 
   const pos = new google.maps.LatLng(lat, lng);
 
-  // HTML marker con nombre + icono
+  // HTML marker
   if (!htmlMarkers.has(id)) {
     const hm = new HtmlMarker(pos, map, id, item.name || ("Camión " + id), ICONS[id] || ICONS[305]);
     htmlMarkers.set(id, hm);
@@ -366,26 +373,25 @@ function updateTruck(id, item) {
     hm.setName(item.name || ("Camión " + id));
   }
 
-  // Línea amarilla SOLO dentro del horario definido
+  // Ruta amarilla en horario
   const habilitarLinea = dentroDeHorarioRuta();
   const pl = ensurePolyline(id);
 
   if (habilitarLinea && Array.isArray(item.tail) && item.tail.length) {
-    // ✅ tail viene como [{lat,lng},{lat,lng},...]
     const path = item.tail
       .map(p => ({ lat: toNum(p.lat), lng: toNum(p.lng) }))
-      .filter(p => p.lat !== null && p.lng !== null);
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
     if (path.length) {
       pl.setPath(path);
       pl.setOptions({ strokeColor: "#FFD400" });
       pl.setMap(map);
-    } else {
-      pl.setMap(null);
     }
   } else {
     pl.setMap(null);
   }
+
+  return true;
 }
 
 function setStatus(text) {
@@ -394,32 +400,38 @@ function setStatus(text) {
 
 async function tick() {
   try {
-    const results = await Promise.all(DEVICE_IDS.map(id => fetchDevice(id)));
+    // 1) Intento principal: una sola llamada general
+    const res = await fetchAllTrucks();
 
-    let okAny = false;
-    let seenAny = false;
-
-    for (const res of results) {
-      if (!res || res.ok !== true) continue;
-
-      // tu worker en modo device_id retorna: { ok:true, time, item, items_count }
-      const item = res.item || null;
-      if (item) seenAny = true;
-
-      const lat = item ? toNum(item.lat) : null;
-      const lng = item ? toNum(item.lng) : null;
-
-      if (item && lat !== null && lng !== null) {
-        okAny = true;
-        updateTruck(Number(item.id), item);
-      }
+    if (!res || res.ok !== true) {
+      setStatus("worker no OK (cookie/endpoint) ⚠️");
+      return;
     }
 
-    if (okAny) {
+    let updated = 0;
+
+    // Soporta forma general: camion1/camion2
+    const c1 = res.camion1 || null;
+    const c2 = res.camion2 || null;
+
+    if (c1 && updateTruck(Number(c1.id), c1)) updated++;
+    if (c2 && updateTruck(Number(c2.id), c2)) updated++;
+
+    // Si no vino camion1/camion2 pero sí vino item (por algún motivo)
+    if (updated === 0 && res.item) {
+      if (updateTruck(Number(res.item.id), res.item)) updated++;
+    }
+
+    // 2) Fallback: si items_count=0 o no actualizó nada, probamos device_id
+    if (updated === 0) {
+      const [r305, r809] = await Promise.all([fetchDevice(305), fetchDevice(809)]);
+      if (r305?.ok && r305.item && updateTruck(305, r305.item)) updated++;
+      if (r809?.ok && r809.item && updateTruck(809, r809.item)) updated++;
+    }
+
+    if (updated > 0) {
       const horario = dentroDeHorarioRuta() ? " (ruta amarilla ON)" : " (ruta amarilla OFF por horario)";
       setStatus("camiones actualizados ✅" + horario);
-    } else if (seenAny) {
-      setStatus("sin coords válidas (revisa lat/lng) ⚠️");
     } else {
       setStatus("sin datos (items_count=0 o cookie) ⚠️");
     }
@@ -437,7 +449,7 @@ async function tick() {
       clearInterval(t);
       initMap();
     }
-  }, 100);
+  }, 120);
 })();
 </script>
 
@@ -532,3 +544,4 @@ function sendReport() {
 
 </body>
 </html>
+
